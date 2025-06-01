@@ -1,5 +1,6 @@
 import { mount, unmount } from "svelte";
 import Overlay from "../components/Overlay.svelte";
+import shadowStylesText from "./shadow-styles.css?inline";
 
 // Content scripts
 // https://developer.chrome.com/docs/extensions/mv3/content_scripts/
@@ -8,21 +9,40 @@ import Overlay from "../components/Overlay.svelte";
 import "./styles.css";
 
 let overlayInstance: any = null;
+let shadowHost: HTMLElement | null = null;
+let shadowRoot: ShadowRoot | null = null;
 let overlayContainer: HTMLElement | null = null;
 
 function createOverlayContainer() {
-    if (overlayContainer) {
+    if (shadowHost && shadowRoot && overlayContainer) {
         return overlayContainer;
     }
     
+    // Create shadow host
+    shadowHost = document.createElement('div');
+    shadowHost.id = 'text-selection-overlay-host';
+    shadowHost.style.position = 'fixed';
+    shadowHost.style.zIndex = '2147483647';
+    shadowHost.style.pointerEvents = 'auto';
+    shadowHost.style.display = 'none';
+    
+    // Attach shadow DOM
+    shadowRoot = shadowHost.attachShadow({ mode: 'open' });
+    
+    // Add styles to shadow DOM from external CSS file
+    const style = document.createElement('style');
+    style.textContent = shadowStylesText;
+    shadowRoot.appendChild(style);
+    
+    // Create container inside shadow DOM
     overlayContainer = document.createElement('div');
     overlayContainer.id = 'text-selection-overlay';
-    overlayContainer.style.position = 'fixed';
-    overlayContainer.style.zIndex = '2147483647';
+    overlayContainer.style.position = 'relative';
+    overlayContainer.style.zIndex = '1';
     overlayContainer.style.pointerEvents = 'auto';
-    overlayContainer.style.display = 'none';
     
-    document.body.appendChild(overlayContainer);
+    shadowRoot.appendChild(overlayContainer);
+    document.body.appendChild(shadowHost);
     
     return overlayContainer;
 }
@@ -36,10 +56,12 @@ function showAvatarOverlay(selectedText: string, x: number, y: number) {
         overlayInstance = null;
     }
     
-    // Update position
-    container.style.top = `${Math.max(10, y)}px`;
-    container.style.left = `${Math.min(window.innerWidth - 300, Math.max(10, x))}px`;
-    container.style.display = 'block';
+    // Update position on shadow host
+    if (shadowHost) {
+        shadowHost.style.top = `${Math.max(10, y)}px`;
+        shadowHost.style.left = `${Math.min(window.innerWidth - 300, Math.max(10, x))}px`;
+        shadowHost.style.display = 'block';
+    }
     
     console.log("container: ", container);
     console.log("selectedText: ", selectedText);
@@ -55,8 +77,8 @@ function showAvatarOverlay(selectedText: string, x: number, y: number) {
 }
 
 function hideAvatarOverlay() {
-    if (overlayContainer) {
-        overlayContainer.style.display = 'none';
+    if (shadowHost) {
+        shadowHost.style.display = 'none';
     }
     
     if (overlayInstance) {
@@ -101,7 +123,7 @@ document.addEventListener('mouseup', handleMouseUp);
 
 // Hide overlay when clicking elsewhere
 document.addEventListener('mousedown', (event) => {
-    if (overlayContainer && !overlayContainer.contains(event.target as Node)) {
+    if (shadowHost && !shadowHost.contains(event.target as Node)) {
         hideAvatarOverlay();
     }
 });
@@ -112,8 +134,10 @@ window.addEventListener('beforeunload', () => {
         unmount(overlayInstance);
         overlayInstance = null;
     }
-    if (overlayContainer) {
-        unmount(overlayContainer);
+    if (shadowHost) {
+        shadowHost.remove();
+        shadowHost = null;
+        shadowRoot = null;
         overlayContainer = null;
     }
 });

@@ -1,0 +1,91 @@
+/* Reset and isolate styles */
+* {
+    box-sizing: border-box;
+}
+
+#text-selection-overlay {
+    all: initial;
+    font-family: system-ui, -apple-system, sans-serif;
+}
+
+/* Ensure our component styles take precedence */
+.simple-overlay {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    background: white !important;
+    border-radius: 12px !important;
+    padding: 8px !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    border: 1px solid #e5e7eb !important;
+    cursor: pointer !important;
+    transition: transform 0.2s ease !important;
+    max-width: 300px !important;
+    font-family: system-ui, -apple-system, sans-serif !important;
+    animation: fadeIn 0.2s ease-out !important;
+    position: relative !important;
+    z-index: 1 !important;
+}
+
+.simple-overlay:hover {
+    transform: scale(1.05) !important;
+}
+
+.avatar-size {
+    width: 48px !important;
+    height: 48px !important;
+    border: 2px solid white !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+    border-radius: 50% !important;
+    overflow: hidden !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+}
+
+.avatar-fallback {
+    background: #3b82f6 !important;
+    color: white !important;
+    font-weight: bold !important;
+    font-size: 14px !important;
+    width: 100% !important;
+    height: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 50% !important;
+}
+
+.tooltip {
+    max-width: 200px !important;
+    min-width: 0 !important;
+}
+
+.selected-text {
+    font-size: 14px !important;
+    color: #374151 !important;
+    margin: 0 0 4px 0 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    font-family: system-ui, -apple-system, sans-serif !important;
+}
+
+.hint {
+    font-size: 12px !important;
+    color: #6b7280 !important;
+    margin: 0 !important;
+    font-family: system-ui, -apple-system, sans-serif !important;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+} 
