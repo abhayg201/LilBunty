@@ -94,6 +94,9 @@
     z-index: 2147483648 !important;
     padding: 16px !important;
     font-family: system-ui, -apple-system, sans-serif !important;
+    overflow: auto; /* ⬅️ Important to allow scrolling if content overflows */
+    word-wrap: break-word; /* ⬅️ Break long words instead of overflowing */
+    white-space: pre-wrap;
 }
 
 .chat-header {

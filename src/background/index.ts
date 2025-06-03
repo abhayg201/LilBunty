@@ -35,7 +35,7 @@ async function handleOpenAIQuery(inputText: string, sendResponse: (response: any
 }
 
 async function queryOpenAI(inputText: string) {
-    const OPENAI_KEY = "";
+    const OPENAI_KEY = "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";
     
     console.log("Making API call to OpenAI...");
     
