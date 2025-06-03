@@ -9,10 +9,12 @@
     
     const avatarSrc = chrome.runtime.getURL("assets/icon/icon-128.png");
     
-    function handleClick() {
+    async function handleClick() {
+        console.log("Avatar clicked, selectedText:", $selectedText);
         chatContainerVisible.set(true);
-        // TODO: Implement chat container functionality
+        
     }
+    
 </script>
 
 {#if visible && !$chatContainerVisible && $selectedText}

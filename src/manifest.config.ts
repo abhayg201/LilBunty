@@ -33,7 +33,7 @@ export default defineManifest(async () => ({
     },
     options_ui: {
         page: "src/options/options.html",
-        open_in_tab: false,
+        open_in_tab: true,
     },
     side_panel: {
         default_path: "src/sidepanel/sidepanel.html",
@@ -47,5 +47,6 @@ export default defineManifest(async () => ({
             "128": "src/assets/icons/icon-128.png",
         },
     },
-    permissions: ["storage", "sidePanel"] as chrome.runtime.ManifestPermissions[],
+    host_permissions: ["https://api.openai.com/"],
+    permissions: ["storage", "sidePanel","scripting", "activeTab"] as chrome.runtime.ManifestPermissions[],
 }));

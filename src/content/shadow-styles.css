@@ -100,7 +100,6 @@
     display: flex !important;
     justify-content: space-between !important;
     align-items: center !important;
-    margin-bottom: 16px !important;
 }
 
 .chat-header span {
