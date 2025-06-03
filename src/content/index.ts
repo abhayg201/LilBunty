@@ -1,7 +1,7 @@
 import { mount, unmount } from "svelte";
 import Overlay from "../components/Overlay.svelte";
 import shadowStylesText from "./shadow-styles.css?inline";
-
+import { selectedText, chatContainerVisible } from "../lib/stores";
 // Content scripts
 // https://developer.chrome.com/docs/extensions/mv3/content_scripts/
 
@@ -47,7 +47,7 @@ function createOverlayContainer() {
     return overlayContainer;
 }
 
-function showAvatarOverlay(selectedText: string, x: number, y: number) {
+function showAvatarOverlay( x: number, y: number) {
     const container = createOverlayContainer();
     
     // Destroy existing instance if it exists
@@ -70,7 +70,6 @@ function showAvatarOverlay(selectedText: string, x: number, y: number) {
     overlayInstance = mount(Overlay, {
         target: container,
         props: {
-            selectedText: selectedText,
             visible: true
         }
     });
@@ -102,15 +101,15 @@ function debounce(func: Function, wait: number) {
 
 // Listen for text selection with debouncing
 const handleMouseUp = debounce((event: MouseEvent) => {
+    if (shadowHost && shadowHost.contains(event.target as Node)) return;
     try {
         const selection = window.getSelection();
-        const selectedText = selection?.toString().trim();
-        
-        if (selectedText && selectedText.length > 0) {
-            const x = event.clientX;
-            const y = event.clientY - 60;
-            
-            showAvatarOverlay(selectedText, x, y);
+        const text = selection?.toString().trim() || '';
+
+        if (text) {
+            chatContainerVisible.set(false);     // hide previous chat
+            selectedText.set(text);
+            showAvatarOverlay(event.clientX, event.clientY - 60);
         } else {
             hideAvatarOverlay();
         }
@@ -125,6 +124,7 @@ document.addEventListener('mouseup', handleMouseUp);
 document.addEventListener('mousedown', (event) => {
     if (shadowHost && !shadowHost.contains(event.target as Node)) {
         hideAvatarOverlay();
+        chatContainerVisible.set(false);
     }
 });
 
@@ -134,10 +134,8 @@ window.addEventListener('beforeunload', () => {
         unmount(overlayInstance);
         overlayInstance = null;
     }
-    if (shadowHost) {
-        shadowHost.remove();
-        shadowHost = null;
-        shadowRoot = null;
+    if (overlayContainer) {
+        overlayContainer.remove();
         overlayContainer = null;
     }
 });
