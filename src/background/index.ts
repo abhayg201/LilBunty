@@ -1,4 +1,5 @@
 import { count } from "../storage";
+import { config } from '../config';
 
 // Background service workers
 // https://developer.chrome.com/docs/extensions/mv3/service_workers/
@@ -35,7 +36,12 @@ async function handleOpenAIQuery(inputText: string, sendResponse: (response: any
 }
 
 async function queryOpenAI(inputText: string) {
-    const OPENAI_KEY = "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";
+    const OPENAI_KEY = config.OPENAI_API_KEY;
+    console.log("OPENAI_KEY:", OPENAI_KEY ? "Key loaded" : "Key missing");
+    
+    if (!OPENAI_KEY) {
+        throw new Error('OpenAI API key not configured');
+    }
     
     console.log("Making API call to OpenAI...");
     

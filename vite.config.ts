@@ -21,4 +21,9 @@ export default defineConfig({
           $lib: path.resolve("./src/lib"),
         },
       },
+    define: {
+      'process.env.OPENAI_API_KEY': JSON.stringify(process.env.OPENAI_API_KEY || '')
+    },
+    // Make sure to load .env file
+    envDir: '.',
 });
