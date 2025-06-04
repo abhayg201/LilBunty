@@ -1,9 +1,12 @@
 <script lang="ts">
     import { chatContainerVisible, selectedText } from "../lib/stores";
+    import { ContextService, type UserPreferences } from "../services/context-service";
     
     let response = '';
     let loading = false;
-    
+    // Optionally, user preferences could be made reactive or configurable
+    const userPrefs: Partial<UserPreferences> = {};
+
     function handleClose() {
         chatContainerVisible.set(false);
     }
@@ -15,10 +18,13 @@
         response = '';
         
         try {
-            // Send message to background script
+            // Gather context and prompts
+            const context = ContextService.getContextualInfo($selectedText);
+            const { systemPrompt, userPrompt } = ContextService.generateEnhancedAgenticPrompt($selectedText, context, userPrefs);
+            // Send both prompts to background script
             const result = await chrome.runtime.sendMessage({
                 type: "QUERY_OPENAI",
-                payload: { text: $selectedText }
+                payload: { systemPrompt, userPrompt }
             });
             
             response = result.answer || 'No response received';

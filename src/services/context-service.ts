@@ -86,12 +86,12 @@ export interface PageContext {
   - A user-selected text segment (explicitly marked in the context as [[SELECTED]]...[[/SELECTED]])
   - Contextual text before and after the selection
   - Metadata such as page title, URL, domain, and detected content type
-  - The user’s intent preferences (e.g., explanation depth, tone, focus area)
+  - The user's intent preferences (e.g., explanation depth, tone, focus area)
   
   You should:
   - Prioritize clarity and relevance
   - Be proactive: infer relationships, clarify ambiguity, and surface hidden implications
-  - Adjust tone and complexity to the user’s specified expertise level
+  - Adjust tone and complexity to the user's specified expertise level
   - Use structured output (headings, bullet points, code blocks, etc.)
   - Highlight key insights, terms, and connections to broader topics
   
