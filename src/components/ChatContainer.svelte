@@ -1,63 +1,235 @@
 <script lang="ts">
-    import { chatContainerVisible, selectedText } from "../lib/stores";
-    
-    let response = '';
-    let loading = false;
-    
-    function handleClose() {
-        chatContainerVisible.set(false);
+  import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardFooter,
+    CardHeader,
+    CardTitle,
+  } from '$lib/components/ui/card'
+  import { Button } from '$lib/components/ui/button'
+  import { Badge } from '$lib/components/ui/badge'
+  import { Separator } from '$lib/components/ui/separator'
+  import { chatContainerVisible, selectedText } from '../lib/stores'
+
+  let response = ''
+  let loading = false
+  let customPrompt = ''
+  let selectedPromptType = ''
+
+  // Predefined prompt templates
+  const promptTemplates = [
+    {
+      id: 'explain',
+      label: 'Explain',
+      prompt: 'Please explain this text in simple terms:',
+    },
+    {
+      id: 'summarize',
+      label: 'Summarize',
+      prompt: 'Please provide a concise summary of:',
+    },
+    {
+      id: 'translate',
+      label: 'Translate',
+      prompt: 'Please translate this text to English:',
+    },
+    {
+      id: 'analyze',
+      label: 'Analyze',
+      prompt: 'Please analyze and provide insights about:',
+    },
+    {
+      id: 'questions',
+      label: 'Ask Questions',
+      prompt: 'Generate thoughtful questions about:',
+    },
+  ]
+
+  function handleClose() {
+    chatContainerVisible.set(false)
+    response = ''
+    customPrompt = ''
+    selectedPromptType = ''
+  }
+
+  function selectPromptTemplate(template: (typeof promptTemplates)[0]) {
+    selectedPromptType = template.id
+    customPrompt = template.prompt
+  }
+
+  async function sendToGPT() {
+    if (!$selectedText) return
+
+    const finalPrompt = customPrompt || 'Please help me understand this text:'
+
+    loading = true
+    response = ''
+
+    try {
+      // Send message to background script
+      const result = await chrome.runtime.sendMessage({
+        type: 'QUERY_OPENAI',
+        payload: {
+          text: `${finalPrompt}\n\n"${$selectedText}"`,
+        },
+      })
+
+      response = result.answer || 'No response received'
+    } catch (error) {
+      console.error('Error sending message:', error)
+      response = 'Error getting response'
+    } finally {
+      loading = false
     }
-    
-    async function sendToGPT() {
-        if (!$selectedText) return;
-        
-        loading = true;
-        response = '';
-        
-        try {
-            // Send message to background script
-            const result = await chrome.runtime.sendMessage({
-                type: "QUERY_OPENAI",
-                payload: { text: $selectedText }
-            });
-            
-            response = result.answer || 'No response received';
-        } catch (error) {
-            console.error('Error sending message:', error);
-            response = 'Error getting response';
-        } finally {
-            loading = false;
-        }
-    }
-    
-    // Auto-send when component mounts and selectedText is available
-    $: if ($chatContainerVisible && $selectedText && !response && !loading) {
-        sendToGPT();
-    }
+  }
+
+  // Auto-select first prompt template on mount
+  $: if (
+    $chatContainerVisible &&
+    !selectedPromptType &&
+    promptTemplates.length > 0
+  ) {
+    selectPromptTemplate(promptTemplates[0])
+  }
 </script>
 
 {#if $chatContainerVisible}
-    <div class="chat-container">
-        <div class="chat-header">
-            <span><strong>Chat about:</strong>"{$selectedText}"</span>
-            <button on:click={handleClose}>×</button>
+  <div class="chat-overlay">
+    <Card class="chat-card">
+      <CardHeader class="pb-3">
+        <div class="flex items-center justify-between">
+          <CardTitle class="text-lg">AI Assistant</CardTitle>
+          <Button
+            variant="ghost"
+            size="icon"
+            on:click={handleClose}
+            class="h-8 w-8"
+          >
+            <span class="text-lg">×</span>
+          </Button>
         </div>
-        <div class="chat-content">
-            <!-- <p><strong>Selected:</strong> {$selectedText}</p> -->
-            
+        <CardDescription>Chat about your selected text</CardDescription>
+      </CardHeader>
+
+      <CardContent class="space-y-4">
+        <!-- Selected Text Display -->
+        <div class="selected-text-section">
+          <h4 class="text-sm font-medium text-muted-foreground mb-2">
+            Selected Text:
+          </h4>
+          <div class="bg-muted p-3 rounded-md text-sm max-h-20 overflow-y-auto">
+            "{$selectedText}"
+          </div>
+        </div>
+
+        <Separator />
+
+        <!-- Prompt Templates -->
+        <div class="prompt-templates">
+          <h4 class="text-sm font-medium mb-3">Quick Actions:</h4>
+          <div class="flex flex-wrap gap-2">
+            {#each promptTemplates as template}
+              <Button
+                variant={selectedPromptType === template.id
+                  ? 'default'
+                  : 'outline'}
+                size="sm"
+                on:click={() => selectPromptTemplate(template)}
+                class="text-xs"
+              >
+                {template.label}
+              </Button>
+            {/each}
+          </div>
+        </div>
+
+        <!-- Custom Prompt Input -->
+        <div class="custom-prompt">
+          <h4 class="text-sm font-medium mb-2">Custom Prompt:</h4>
+          <textarea
+            bind:value={customPrompt}
+            placeholder="Enter your custom prompt here..."
+            class="w-full min-h-[80px] p-3 text-sm border border-input bg-background rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            rows="3"
+          ></textarea>
+        </div>
+
+        <!-- Response Section -->
+        {#if loading || response}
+          <Separator />
+          <div class="response-section">
+            <h4 class="text-sm font-medium mb-2">Response:</h4>
             {#if loading}
-                <p>Getting response...</p>
+              <div
+                class="flex items-center space-x-2 text-sm text-muted-foreground"
+              >
+                <div
+                  class="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full"
+                ></div>
+                <span>Getting response...</span>
+              </div>
             {:else if response}
-                <div class="response">
-                    <strong>GPT Response:</strong>
-                    <p>{response}</p>
-                </div>
+              <div
+                class="bg-muted p-3 rounded-md text-sm max-h-40 overflow-y-auto"
+              >
+                {response}
+              </div>
             {/if}
-            
-            <!-- {#if !loading}
-                <button on:click={sendToGPT}>Ask GPT</button>
-            {/if} -->
-        </div>
-    </div>
+          </div>
+        {/if}
+      </CardContent>
+
+      <CardFooter class="pt-3">
+        <Button
+          on:click={sendToGPT}
+          disabled={loading || !customPrompt.trim()}
+          class="w-full"
+        >
+          {loading ? 'Sending...' : 'Send to AI'}
+        </Button>
+      </CardFooter>
+    </Card>
+  </div>
 {/if}
 
+<style>
+  .chat-overlay {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 2147483647;
+    pointer-events: auto;
+    animation: slideIn 0.2s ease-out;
+  }
+
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+  }
+
+  .selected-text-section,
+  .prompt-templates,
+  .custom-prompt,
+  .response-section {
+    animation: fadeInUp 0.3s ease-out;
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+</style>

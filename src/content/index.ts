@@ -1,13 +1,13 @@
 import { mount, unmount } from "svelte";
 import Overlay from "../components/Overlay.svelte";
 import shadowStylesText from "./shadow-styles.css?inline";
+import appStylesText from "../app.css?inline";
 import { selectedText, chatContainerVisible } from "../lib/stores";
 // Content scripts
 // https://developer.chrome.com/docs/extensions/mv3/content_scripts/
 
 // Import global styles
 import "./styles.css";
-
 let overlayInstance: any = null;
 let shadowHost: HTMLElement | null = null;
 let shadowRoot: ShadowRoot | null = null;
@@ -29,10 +29,15 @@ function createOverlayContainer() {
     // Attach shadow DOM
     shadowRoot = shadowHost.attachShadow({ mode: 'open' });
     
-    // Add styles to shadow DOM from external CSS file
-    const style = document.createElement('style');
-    style.textContent = shadowStylesText;
-    shadowRoot.appendChild(style);
+    // Add main app styles (includes Tailwind and CSS variables) to shadow DOM
+    const appStyle = document.createElement('style');
+    appStyle.textContent = appStylesText;
+    shadowRoot.appendChild(appStyle);
+    
+    // Add custom shadow styles to shadow DOM
+    const shadowStyle = document.createElement('style');
+    shadowStyle.textContent = shadowStylesText;
+    shadowRoot.appendChild(shadowStyle);
     
     // Create container inside shadow DOM
     overlayContainer = document.createElement('div');
@@ -47,7 +52,7 @@ function createOverlayContainer() {
     return overlayContainer;
 }
 
-function showAvatarOverlay( x: number, y: number) {
+function showBuntyOverlay( x: number, y: number) {
     const container = createOverlayContainer();
     
     // Destroy existing instance if it exists
@@ -88,7 +93,7 @@ function hideAvatarOverlay() {
 
 // Debounce function to prevent rapid firing
 function debounce(func: Function, wait: number) {
-    let timeout: number;
+    let timeout: any;
     return function executedFunction(...args: any[]) {
         const later = () => {
             clearTimeout(timeout);
@@ -107,9 +112,9 @@ const handleMouseUp = debounce((event: MouseEvent) => {
         const text = selection?.toString().trim() || '';
 
         if (text) {
-            chatContainerVisible.set(false);     // hide previous chat
+            chatContainerVisible.set(false);   
             selectedText.set(text);
-            showAvatarOverlay(event.clientX, event.clientY - 60);
+            showBuntyOverlay(event.clientX, event.clientY - 60);
         } else {
             hideAvatarOverlay();
         }
