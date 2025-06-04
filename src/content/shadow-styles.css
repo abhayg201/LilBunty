@@ -1,6 +1,35 @@
-/* Reset and isolate styles */
+/* Reset and isolate styles within shadow DOM */
+:host {
+    all: initial;
+    font-family: system-ui, -apple-system, sans-serif;
+}
+
 * {
     box-sizing: border-box;
+}
+
+/* Ensure CSS variables are available in shadow DOM */
+:host, #text-selection-overlay {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 3.9%;
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 0 0% 45.1%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 3.9%;
+    --border: 0 0% 89.8%;
+    --input: 0 0% 89.8%;
+    --primary: 0 0% 9%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 96.1%;
+    --secondary-foreground: 0 0% 9%;
+    --accent: 0 0% 96.1%;
+    --accent-foreground: 0 0% 9%;
+    --destructive: 0 72.2% 50.6%;
+    --destructive-foreground: 0 0% 98%;
+    --ring: 0 0% 3.9%;
+    --radius: 0.5rem;
 }
 
 #text-selection-overlay {
@@ -8,7 +37,107 @@
     font-family: system-ui, -apple-system, sans-serif;
 }
 
-/* Ensure our component styles take precedence */
+/* Widget opener styles */
+.widget-opener {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    animation: fadeIn 0.2s ease-out !important;
+    position: relative !important;
+    z-index: 1 !important;
+}
+
+/* Badge styles for the widget opener */
+.widget-opener span {
+    background: #3b82f6 !important;
+    color: white !important;
+    border-radius: 9999px !important;
+    padding: 8px 16px !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    border: none !important;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
+    font-family: system-ui, -apple-system, sans-serif !important;
+}
+
+.widget-opener span:hover {
+    background: #2563eb !important;
+    transform: scale(1.05) !important;
+    box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4) !important;
+}
+
+/* Chat card overlay styles */
+.chat-overlay {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    z-index: 2147483647 !important;
+    pointer-events: auto !important;
+    animation: slideIn 0.2s ease-out !important;
+}
+
+.chat-card {
+    width: 420px !important;
+    max-width: 90vw !important;
+    max-height: 80vh !important;
+    overflow: hidden !important;
+    background: white !important;
+    border-radius: 12px !important;
+    border: 1px solid #e5e7eb !important;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+    font-family: system-ui, -apple-system, sans-serif !important;
+}
+
+/* Ensure proper text styling inside the card */
+.chat-card * {
+    font-family: system-ui, -apple-system, sans-serif !important;
+}
+
+/* Override any conflicting styles for shadcn components */
+.chat-overlay button,
+.chat-overlay input,
+.chat-overlay textarea {
+    font-family: system-ui, -apple-system, sans-serif !important;
+}
+
+/* Animation keyframes */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Legacy styles - keeping for compatibility but may be removed */
 .simple-overlay {
     display: flex !important;
     align-items: center !important;
@@ -134,15 +263,4 @@
     margin: 0 0 8px 0 !important;
     font-size: 14px !important;
     color: #374151 !important;
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(-10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
 } 
