@@ -97,7 +97,7 @@
 //   ) {
 //     selectPromptTemplate(promptTemplates[0])
 //   }
-// </script>
+</script>
 
 {#if $chatContainerVisible}
   <div class="chat-overlay">
