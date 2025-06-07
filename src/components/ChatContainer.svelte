@@ -90,13 +90,13 @@
   }
 
   // Auto-select first prompt template on mount
-//   $: if (
-//     $chatContainerVisible &&
-//     !selectedPromptType &&
-//     promptTemplates.length > 0
-//   ) {
-//     selectPromptTemplate(promptTemplates[0])
-//   }
+  // $: if (
+  //   $chatContainerVisible &&
+  //   !selectedPromptType &&
+  //   promptTemplates.length > 0
+  // ) {
+  //   selectPromptTemplate(promptTemplates[0])
+  // }
 </script>
 
 {#if $chatContainerVisible}
@@ -158,71 +158,7 @@
             class="w-full min-h-[80px] p-3 text-sm border border-input bg-background rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
             rows="3"
           ></textarea>
-  <div class="chat-overlay">
-    <Card class="chat-card">
-      <CardHeader class="pb-3">
-        <div class="flex items-center justify-between">
-          <CardTitle class="text-lg">AI Assistant</CardTitle>
-          <Button
-            variant="ghost"
-            size="icon"
-            on:click={handleClose}
-            class="h-8 w-8"
-          >
-            <span class="text-lg">×</span>
-          </Button>
         </div>
-        <CardDescription>Chat about your selected text</CardDescription>
-      </CardHeader>
-
-      <CardContent class="space-y-4">
-        <!-- Selected Text Display -->
-        <div class="selected-text-section">
-          <h4 class="text-sm font-medium text-muted-foreground mb-2">
-            Selected Text:
-          </h4>
-          <div class="bg-muted p-3 rounded-md text-sm max-h-20 overflow-y-auto">
-            "{$selectedText}"
-          </div>
-        </div>
-
-        <Separator />
-
-        <!-- Prompt Templates -->
-        <div class="prompt-templates">
-          <h4 class="text-sm font-medium mb-3">Quick Actions:</h4>
-          <div class="flex flex-wrap gap-2">
-            {#each promptTemplates as template}
-              <Button
-                variant={selectedPromptType === template.id
-                  ? 'default'
-                  : 'outline'}
-                size="sm"
-                on:click={() => selectPromptTemplate(template)}
-                class="text-xs"
-              >
-                {template.label}
-              </Button>
-            {/each}
-          </div>
-        </div>
-
-        <!-- Custom Prompt Input -->
-        <div class="custom-prompt">
-          <h4 class="text-sm font-medium mb-2">Custom Prompt:</h4>
-          <textarea
-            bind:value={customPrompt}
-            placeholder="Enter your custom prompt here..."
-            class="w-full min-h-[80px] p-3 text-sm border border-input bg-background rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-            rows="3"
-          ></textarea>
-        </div>
-
-        <!-- Response Section -->
-        {#if loading || response}
-          <Separator />
-          <div class="response-section">
-            <h4 class="text-sm font-medium mb-2">Response:</h4>
 
         <!-- Response Section -->
         {#if loading || response}
@@ -238,20 +174,7 @@
                 ></div>
                 <span>Getting response...</span>
               </div>
-              <div
-                class="flex items-center space-x-2 text-sm text-muted-foreground"
-              >
-                <div
-                  class="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full"
-                ></div>
-                <span>Getting response...</span>
-              </div>
             {:else if response}
-              <div
-                class="bg-muted p-3 rounded-md text-sm max-h-40 overflow-y-auto"
-              >
-                {response}
-              </div>
               <div
                 class="bg-muted p-3 rounded-md text-sm max-h-40 overflow-y-auto"
               >
@@ -275,46 +198,6 @@
   </div>
 {/if}
 
-<style>
-  .chat-overlay {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 2147483647;
-    pointer-events: auto;
-    animation: slideIn 0.2s ease-out;
-  }
-
-  @keyframes slideIn {
-    from {
-      opacity: 0;
-      transform: translate(-50%, -50%) scale(0.95);
-    }
-    to {
-      opacity: 1;
-      transform: translate(-50%, -50%) scale(1);
-    }
-  }
-
-  .selected-text-section,
-  .prompt-templates,
-  .custom-prompt,
-  .response-section {
-    animation: fadeInUp 0.3s ease-out;
-  }
-
-  @keyframes fadeInUp {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-</style>
 <style>
   .chat-overlay {
     position: fixed;
