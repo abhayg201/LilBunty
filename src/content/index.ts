@@ -67,7 +67,23 @@ function showBuntyOverlay( x: number, y: number) {
         shadowHost.style.left = `${Math.min(window.innerWidth - 300, Math.max(10, x))}px`;
         shadowHost.style.display = 'block';
     }
-    
+    // Wait for the next tick to ensure the Svelte component is rendered
+    setTimeout(() => {
+        // Find the chat overlay inside the shadow root
+        if (shadowRoot) {
+            const chatOverlay = shadowRoot.querySelector('.chat-overlay');
+            if (chatOverlay) {
+                chatOverlay.addEventListener('move', (e) => {
+                    console.log("move event", e);
+                    const { x, y } = (e as CustomEvent<{x: number, y: number}>).detail;
+                    if (shadowHost) {
+                        shadowHost.style.top = `${y}px`;
+                        shadowHost.style.left = `${x}px`;
+                    }
+                });
+            }
+        }
+    }, 0);
     console.log("container: ", container);
     console.log("selectedText: ", selectedText);
     
@@ -145,5 +161,5 @@ window.addEventListener('beforeunload', () => {
     }
 });
 
-
+  
 

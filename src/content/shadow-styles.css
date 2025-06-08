@@ -71,14 +71,17 @@
 /* Chat card overlay styles */
 .chat-overlay {
     position: fixed !important;
-    top: 50% !important;
+    /* top: 50% !important;
     left: 50% !important;
-    transform: translate(-50%, -50%) !important;
+    transform: translate(-50%, -50%) !important; */
     z-index: 2147483647 !important;
     pointer-events: auto !important;
     animation: slideIn 0.2s ease-out !important;
 }
-
+.chat-overlay.dragging {
+    user-select: none;
+    cursor: move;
+  }
 .chat-card {
     width: 500px !important;
     max-width: 90vw !important;
@@ -90,7 +93,26 @@
     box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
     font-family: system-ui, -apple-system, sans-serif !important;
 }
-
+.drag-handle {
+    width: 24px;
+    height: 24px;
+    background: #f3f4f6;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+    margin-right: 0.5rem;
+    transition: background 0.2s;
+    border: 1px solid #e5e7eb;
+  }
+  .drag-handle:active {
+    cursor: grabbing;
+    background: #e5e7eb;
+  }
+  body.dragging-cursor, .chat-overlay.dragging-cursor {
+    cursor: grabbing !important;
+  }
 /* Ensure proper text styling inside the card */
 .chat-card * {
     font-family: system-ui, -apple-system, sans-serif !important;

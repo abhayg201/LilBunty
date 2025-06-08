@@ -11,8 +11,8 @@
   import { Separator } from '$lib/components/ui/separator'
   import { chatContainerVisible, selectedText } from '../lib/stores'
   import { ContextService, type UserPreferences } from "../services/context-service";
-  import { onDestroy } from 'svelte';
-  import { marked } from 'marked';
+  import { onDestroy, onMount } from 'svelte';
+  import { marked, type MarkedOptions } from 'marked';
   import hljs from 'highlight.js';
   import 'highlight.js/styles/github.css';
 
@@ -22,9 +22,49 @@
   let selectedPromptType = ''
   let port: chrome.runtime.Port;
   let responseDiv: HTMLDivElement | null = null;
+  let shadowRoot: ShadowRoot | null = null;
+  let chatOverlay: HTMLDivElement  | null = null;
+  let pos = { x: 100, y: 100 };
+  let offset = { x: 0, y: 0 };
+  let dragging = false;
 
   const userPrefs: Partial<UserPreferences> = {};
 
+
+  onMount(() => {
+    // Find the shadow root (if any)
+      if (chatOverlay ) {
+        shadowRoot = chatOverlay!.getRootNode() as ShadowRoot;
+      }
+  });
+  function onDragStart(event: MouseEvent) {
+    dragging = true;
+    offset = {
+      x: event.clientX - pos.x,
+      y: event.clientY - pos.y
+    };
+    const root = shadowRoot || window;
+    root.addEventListener('mousemove', onDragMove as EventListener);
+    root.addEventListener('mouseup', onDragEnd as EventListener);
+    document.body.classList.add('dragging-cursor');
+  }
+
+  function onDragMove(event: MouseEvent) {
+    if (!dragging) return;
+    const newPos = { x: event.clientX - offset.x, y: event.clientY - offset.y };
+    pos = newPos;
+    // Emit event to parent
+    const dragEvent = new CustomEvent('move', { detail: newPos });
+    chatOverlay?.dispatchEvent(dragEvent);
+  }
+
+  function onDragEnd() {
+    dragging = false;
+    const root = shadowRoot || window;
+    root.removeEventListener('mousemove', onDragMove as EventListener);
+    root.removeEventListener('mouseup', onDragEnd as EventListener);
+    document.body.classList.remove('dragging-cursor');
+  }
   // Predefined prompt templates
   const promptTemplates = [
     {
@@ -141,28 +181,48 @@
   // ) {
   //   selectPromptTemplate(promptTemplates[0])
   // }
-
   marked.setOptions({
-    highlight: function(code, lang) {
+    highlight: (code: string, lang: string) => {
       return hljs.highlightAuto(code, [lang]).value;
     }
-  });
+  } as MarkedOptions);
 </script>
 
 {#if $chatContainerVisible}
-  <div class="chat-overlay">
+  <div class="chat-overlay {dragging ? 'dragging' : ''}"
+    bind:this={chatOverlay}
+    style="left: {pos.x}px; top: {pos.y}px;"
+    >
     <Card class="chat-card">
       <CardHeader class="pb-3">
         <div class="flex items-center justify-between">
           <CardTitle class="text-lg">AI Assistant</CardTitle>
-          <Button
-            variant="ghost"
-            size="icon"
-            on:click={handleClose}
-            class="h-8 w-8"
-          >
-            <span class="text-lg">×</span>
-          </Button>
+          <div class="flex items-center gap-2">
+            <!-- Drag handle -->
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <div
+              class="drag-handle"
+              title="Drag"
+              on:mousedown={(e) => onDragStart(e as MouseEvent)}
+            >
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="5" cy="6" r="1.5" fill="#bbb"/>
+                <circle cx="5" cy="10" r="1.5" fill="#bbb"/>
+                <circle cx="5" cy="14" r="1.5" fill="#bbb"/>
+                <circle cx="10" cy="6" r="1.5" fill="#bbb"/>
+                <circle cx="10" cy="10" r="1.5" fill="#bbb"/>
+                <circle cx="10" cy="14" r="1.5" fill="#bbb"/>
+              </svg>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              on:click={handleClose}
+              class="h-8 w-8"
+            >
+              <span class="text-lg">×</span>
+            </Button>
+          </div>
         </div>
         <CardDescription>Chat about your selected text</CardDescription>
       </CardHeader>
@@ -254,16 +314,6 @@
 {/if}
 
 <style>
-  .chat-overlay {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 2147483647;
-    pointer-events: auto;
-    animation: slideIn 0.2s ease-out;
-  }
-
   @keyframes slideIn {
     from {
       opacity: 0;
@@ -276,7 +326,7 @@
   }
 
   .selected-text-section,
-  /* .prompt-templates, */
+  .prompt-templates,
   .custom-prompt,
   .response-section {
     animation: fadeInUp 0.3s ease-out;

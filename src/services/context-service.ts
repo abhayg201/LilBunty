@@ -98,6 +98,7 @@ export interface PageContext {
   If the selection is ambiguous or incomplete, infer possible interpretations based on the surrounding text.
   
   Act like a domain-aware mentor who guides with precision, context, and intent-driven understanding.
+  Make sure to send everything in a markdown format.  
       `.trim();
   
       let levelInstruction = '';
