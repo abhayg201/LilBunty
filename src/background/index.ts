@@ -13,6 +13,8 @@ chrome.runtime.onInstalled.addListener(() => {
 // you can use the following code:
 // chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })
 //    .catch((error) => console.error(error));
+
+//for normal query
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     console.log("Background received message:", message);
     
@@ -29,7 +31,7 @@ async function handleOpenAIQuery(payload: { systemPrompt: string, userPrompt: st
         const result = await OpenAIService.queryOpenAI({
             systemPrompt: payload.systemPrompt,
             userPrompt: payload.userPrompt,
-            apiKey: config.OPENAI_API_KEY
+            apiKey: config.OPENAI_API_KEY,
         });
         console.log("OpenAI result:", result);
         sendResponse({ answer: result });
@@ -38,3 +40,32 @@ async function handleOpenAIQuery(payload: { systemPrompt: string, userPrompt: st
         sendResponse({ error: error instanceof Error ? error.message : String(error) });
     }
 }
+
+
+//for setting up a port for streaming chunks of response
+chrome.runtime.onConnect.addListener((port) => {
+    port.onMessage.addListener(async (message) => {
+      if (message.type === "QUERY_OPENAI_STREAM") {
+        try {
+          const { systemPrompt, userPrompt } = message.payload;
+          let fullResponse = "";
+          await OpenAIService.queryOpenAI({
+            systemPrompt,
+            userPrompt,
+            apiKey: config.OPENAI_API_KEY,
+            stream: true,
+            onStream: (chunk) => {
+              fullResponse += chunk;
+              port.postMessage({ type: "STREAM_CHUNK", chunk });
+            }
+          });
+          port.postMessage({ type: "STREAM_DONE" });
+        } catch (error) {
+          port.postMessage({
+            type: "STREAM_ERROR",
+            error: error instanceof Error ? error.message : String(error)
+          });
+        }
+      }
+    });
+  });

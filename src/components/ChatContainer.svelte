@@ -8,15 +8,20 @@
     CardTitle,
   } from '$lib/components/ui/card'
   import { Button } from '$lib/components/ui/button'
-  import { Badge } from '$lib/components/ui/badge'
   import { Separator } from '$lib/components/ui/separator'
   import { chatContainerVisible, selectedText } from '../lib/stores'
   import { ContextService, type UserPreferences } from "../services/context-service";
+  import { onDestroy } from 'svelte';
+  import { marked } from 'marked';
+  import hljs from 'highlight.js';
+  import 'highlight.js/styles/github.css';
 
   let response = ''
   let loading = false
   let customPrompt = ''
   let selectedPromptType = ''
+  let port: chrome.runtime.Port;
+  let responseDiv: HTMLDivElement | null = null;
 
   const userPrefs: Partial<UserPreferences> = {};
 
@@ -54,6 +59,8 @@
     response = ''
     customPrompt = ''
     selectedPromptType = ''
+    loading = false;
+    if (port) port.disconnect();
   }
 
   function selectPromptTemplate(template: (typeof promptTemplates)[0]) {
@@ -69,27 +76,64 @@
 
     loading = true
     response = ''
+    // Remove previous listener and disconnect port if any
+    if (port) {
+      port.disconnect();
+    }
+    //commented out for streaming
+    // try {
+    //   // Gather context and prompts
+    //   const context = ContextService.getContextualInfo($selectedText);
+    //   const { systemPrompt, userPrompt } = ContextService.generateEnhancedAgenticPrompt($selectedText, context, userPrefs);
+    //   // Send message to background script
+    //   const result = await chrome.runtime.sendMessage({
+    //     type: 'QUERY_OPENAI',
+    //     payload: { systemPrompt, userPrompt }
+    //   });
 
-    try {
-      // Gather context and prompts
-      const context = ContextService.getContextualInfo($selectedText);
-      const { systemPrompt, userPrompt } = ContextService.generateEnhancedAgenticPrompt($selectedText, context, userPrefs);
-      // Send message to background script
-      const result = await chrome.runtime.sendMessage({
-        type: 'QUERY_OPENAI',
-        payload: { systemPrompt, userPrompt }
-      });
+    //   response = result.answer || 'No response received'
+    // } catch (error) {
+    //   console.error('Error sending message:', error)
+    //   response = 'Error getting response'
+    // } finally {
+    //   loading = false
+    // }
 
-      response = result.answer || 'No response received'
-    } catch (error) {
-      console.error('Error sending message:', error)
-      response = 'Error getting response'
-    } finally {
-      loading = false
+    // Open a port for streaming
+    port = chrome.runtime.connect();
+    port.postMessage({
+      type: 'QUERY_OPENAI_STREAM',
+      payload: {
+        systemPrompt: finalPrompt,
+        userPrompt: $selectedText
+      }
+    });
+
+    port.onMessage.addListener(handleStreamMessage);
+  }
+  function handleStreamMessage(msg: any) {
+    if (msg.type === 'STREAM_CHUNK') {
+      response += msg.chunk;
+
+      // Auto-scroll to bottom as new text arrives
+      setTimeout(() => {
+        if (responseDiv) responseDiv.scrollTop = responseDiv.scrollHeight;
+      }, 0);
+
+    } else if (msg.type === 'STREAM_DONE') {
+      loading = false;
+      port.disconnect();
+    } else if (msg.type === 'STREAM_ERROR') {
+      response = 'Error: ' + msg.error;
+      loading = false;
+      port.disconnect();
     }
   }
 
-  // Auto-select first prompt template on mount
+    onDestroy(() => {
+      if (port) port.disconnect();
+    });
+  // // Auto-select first prompt template on mount
   // $: if (
   //   $chatContainerVisible &&
   //   !selectedPromptType &&
@@ -97,6 +141,12 @@
   // ) {
   //   selectPromptTemplate(promptTemplates[0])
   // }
+
+  marked.setOptions({
+    highlight: function(code, lang) {
+      return hljs.highlightAuto(code, [lang]).value;
+    }
+  });
 </script>
 
 {#if $chatContainerVisible}
@@ -131,7 +181,7 @@
         <Separator />
 
         <!-- Prompt Templates -->
-        <div class="prompt-templates">
+        <!-- <div class="prompt-templates">
           <h4 class="text-sm font-medium mb-3">Quick Actions:</h4>
           <div class="flex flex-wrap gap-2">
             {#each promptTemplates as template}
@@ -147,7 +197,7 @@
               </Button>
             {/each}
           </div>
-        </div>
+        </div> -->
 
         <!-- Custom Prompt Input -->
         <div class="custom-prompt">
@@ -157,6 +207,7 @@
             placeholder="Enter your custom prompt here..."
             class="w-full min-h-[80px] p-3 text-sm border border-input bg-background rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
             rows="3"
+            disabled={loading}
           ></textarea>
         </div>
 
@@ -167,18 +218,22 @@
             <h4 class="text-sm font-medium mb-2">Response:</h4>
             {#if loading}
               <div
-                class="flex items-center space-x-2 text-sm text-muted-foreground"
+                class="flex items-center mb-2 space-x-2 text-sm text-muted-foreground"
               >
                 <div
                   class="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full"
                 ></div>
-                <span>Getting response...</span>
+                  <span>
+                    {response ? 'Streaming response...' : 'Waiting for response...'}
+                  </span>
               </div>
-            {:else if response}
+              {/if}
+            {#if response}
               <div
-                class="bg-muted p-3 rounded-md text-sm max-h-40 overflow-y-auto"
+                class="bg-muted p-3 rounded-md text-sm max-h-40 overflow-y-auto markdown-body"
+                bind:this={responseDiv}
               >
-                {response}
+                {@html marked.parse(response)}
               </div>
             {/if}
           </div>
@@ -221,7 +276,7 @@
   }
 
   .selected-text-section,
-  .prompt-templates,
+  /* .prompt-templates, */
   .custom-prompt,
   .response-section {
     animation: fadeInUp 0.3s ease-out;
@@ -237,4 +292,11 @@
       transform: translateY(0);
     }
   }
+
+  @import 'github-markdown-css/github-markdown.css';
+  .markdown-body {
+    /* Optionally override background, font, etc. */
+    background: transparent;
+  }
+  
 </style>
