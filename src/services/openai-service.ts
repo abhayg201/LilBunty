@@ -1,4 +1,5 @@
 export class OpenAIService {
+  
   static async queryOpenAI({
     systemPrompt,
     userPrompt,

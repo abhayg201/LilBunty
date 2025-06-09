@@ -1,5 +1,4 @@
 import { count } from "../storage";
-import { config } from '../config';
 import { OpenAIService } from '../services/openai-service';
 
 // Background service workers
@@ -8,6 +7,24 @@ import { OpenAIService } from '../services/openai-service';
 chrome.runtime.onInstalled.addListener(() => {
     count.subscribe(console.log);
 });
+
+// Helper function to get API key from storage
+async function getApiKey(): Promise<string> {
+    return new Promise((resolve, reject) => {
+        chrome.storage.local.get(['apiKey'], (result) => {
+            if (chrome.runtime.lastError) {
+                reject(new Error(chrome.runtime.lastError.message));
+            } else {
+                const apiKey = result.apiKey;
+                if (!apiKey) {
+                    reject(new Error('API key not found. Please configure it in the options page.'));
+                } else {
+                    resolve(apiKey);
+                }
+            }
+        });
+    });
+}
 
 // NOTE: If you want to toggle the side panel from the extension's action button,
 // you can use the following code:
@@ -28,10 +45,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 async function handleOpenAIQuery(payload: { systemPrompt: string, userPrompt: string }, sendResponse: (response: any) => void) {
     try {
         console.log("Processing OpenAI query for prompts:", payload);
+        const apiKey = await getApiKey();
         const result = await OpenAIService.queryOpenAI({
             systemPrompt: payload.systemPrompt,
             userPrompt: payload.userPrompt,
-            apiKey: config.OPENAI_API_KEY,
+            apiKey,
         });
         console.log("OpenAI result:", result);
         sendResponse({ answer: result });
@@ -48,11 +66,12 @@ chrome.runtime.onConnect.addListener((port) => {
       if (message.type === "QUERY_OPENAI_STREAM") {
         try {
           const { systemPrompt, userPrompt } = message.payload;
+          const apiKey = await getApiKey();
           let fullResponse = "";
           await OpenAIService.queryOpenAI({
             systemPrompt,
             userPrompt,
-            apiKey: config.OPENAI_API_KEY,
+            apiKey,
             stream: true,
             onStream: (chunk) => {
               fullResponse += chunk;

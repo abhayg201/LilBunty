@@ -21,6 +21,7 @@
         "autoprefixer": "^10.4.20",
         "bits-ui": "^0.22.0",
         "clsx": "^2.1.1",
+        "lucide-svelte": "^0.513.0",
         "postcss": "^8.5.4",
         "shadcn-svelte": "^0.14.2",
         "svelte": "5.16.2",
@@ -34,7 +35,6 @@
     },
     "dependencies": {
         "highlight.js": "^11.11.1",
-        "lucide-svelte": "^0.511.0",
         "marked": "^15.0.12"
     }
 }
