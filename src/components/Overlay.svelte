@@ -6,10 +6,12 @@
 
   export let visible = false
 
+
   async function handleClick() {
     console.log('Badge clicked, selectedText:', $selectedText)
     chatContainerVisible.set(true)
   }
+
 </script>
 
 {#if visible && !$chatContainerVisible && $selectedText}

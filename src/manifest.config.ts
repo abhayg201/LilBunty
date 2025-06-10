@@ -33,7 +33,7 @@ export default defineManifest(async () => ({
     },
     options_ui: {
         page: "src/options/options.html",
-        open_in_tab: false,
+        open_in_tab: true,
     },
     side_panel: {
         default_path: "src/sidepanel/sidepanel.html",
