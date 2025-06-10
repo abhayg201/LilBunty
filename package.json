@@ -17,9 +17,11 @@
         "@sveltejs/vite-plugin-svelte": "5.0.3",
         "@tsconfig/svelte": "5.0.4",
         "@types/chrome": "0.0.289",
+        "@types/node": "^22.15.29",
         "autoprefixer": "^10.4.20",
         "bits-ui": "^0.22.0",
         "clsx": "^2.1.1",
+        "lucide-svelte": "^0.513.0",
         "postcss": "^8.5.4",
         "shadcn-svelte": "^0.14.2",
         "svelte": "5.16.2",
@@ -32,6 +34,7 @@
         "vite": "6.0.7"
     },
     "dependencies": {
-        "lucide-svelte": "^0.511.0"
+        "highlight.js": "^11.11.1",
+        "marked": "^15.0.12"
     }
 }
