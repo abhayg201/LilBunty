@@ -67,23 +67,12 @@ function showBuntyOverlay( x: number, y: number) {
         shadowHost.style.left = `${Math.min(window.innerWidth - 300, Math.max(10, x))}px`;
         shadowHost.style.display = 'block';
     }
+
     // Wait for the next tick to ensure the Svelte component is rendered
     setTimeout(() => {
-        // Find the chat overlay inside the shadow root
-        if (shadowRoot) {
-            const chatOverlay = shadowRoot.querySelector('.chat-overlay');
-            if (chatOverlay) {
-                chatOverlay.addEventListener('move', (e) => {
-                    console.log("move event", e);
-                    const { x, y } = (e as CustomEvent<{x: number, y: number}>).detail;
-                    if (shadowHost) {
-                        shadowHost.style.top = `${y}px`;
-                        shadowHost.style.left = `${x}px`;
-                    }
-                });
-            }
-        }
-    }, 0);
+        listenForChatOverlayMounted();
+    }, 10);
+    
     console.log("container: ", container);
     console.log("selectedText: ", selectedText);
     
@@ -93,12 +82,102 @@ function showBuntyOverlay( x: number, y: number) {
         props: {
             visible: true
         }
+    })
+  
+}
+
+function listenForChatOverlayMounted() {
+    if (!shadowRoot) return;
+    const badgeOverlay = shadowRoot.querySelector('.widget-opener');
+    if (!badgeOverlay) return;
+    console.log("badgeOverlay", badgeOverlay);
+    badgeOverlay.addEventListener('chat-overlay-mounted', () => {
+        setTimeout(() => {
+            setupDragListeners();
+        }, 10);
     });
+}
+
+// Drag state
+let isDragging = false;
+let dragOffset = { x: 0, y: 0 };
+
+function setupDragListeners() {
+    console.log("setupDragListeners");
+    if (!shadowRoot) return;
+    console.log("shadowRoot", shadowRoot);
+    // const chatOverlay = shadowRoot.querySelector('.chat-overlay');
+    // if (!chatOverlay) return;
+    // console.log("chatOverlay", chatOverlay);
+    // Listen for drag start events from the component
+    document.addEventListener('drag-start', (e) => {
+        console.log("drag-start event", e);
+        const { offset, initialPos } = (e as CustomEvent).detail;
+        isDragging = true;
+        dragOffset = offset;
+        // Add global event listeners
+        const root = document || window;
+        root.addEventListener('mousemove', handleDragMove as EventListener);
+        root.addEventListener('mouseup', handleDragEnd as EventListener);
+        document.body.classList.add('dragging-cursor');
+        
+        console.log('Drag started', { offset, initialPos });
+    });
+    document.addEventListener('mouseup', handleDragEnd);
+    // Listen for drag end events from the component
+    document.addEventListener('drag-end', () => {
+        handleDragEnd();
+    });
+}
+
+function handleDragMove(event: Event) {
+    console.log("handleDragMove event", event);
+    const mouseEvent = event as MouseEvent;
+    if (!isDragging || !shadowHost) return;
+    
+    const newPos = { 
+        x: mouseEvent.clientX - dragOffset.x, 
+        y: mouseEvent.clientY - dragOffset.y 
+    };
+    
+    // Update shadow host position
+    shadowHost.style.top = `${newPos.y}px`;
+    shadowHost.style.left = `${newPos.x}px`;
+    
+    // Notify component of position change
+    if (shadowRoot) {
+        const chatOverlay = shadowRoot.querySelector('.chat-overlay');
+        if (chatOverlay) {
+            const positionUpdateEvent = new CustomEvent('position-update', { 
+                detail: newPos 
+            });
+            chatOverlay.dispatchEvent(positionUpdateEvent);
+        }
+    }
+}
+
+function handleDragEnd() {
+    if (!isDragging) return;
+    
+    isDragging = false;
+    
+    // Remove global event listeners
+    const root = shadowRoot || window;
+    root.removeEventListener('mousemove', handleDragMove as EventListener);
+    root.removeEventListener('mouseup', handleDragEnd as EventListener);
+    document.body.classList.remove('dragging-cursor');
+    
+    console.log('Drag ended');
 }
 
 function hideAvatarOverlay() {
     if (shadowHost) {
         shadowHost.style.display = 'none';
+    }
+    
+    // Cleanup drag state if overlay is hidden while dragging
+    if (isDragging) {
+        handleDragEnd();
     }
     
     if (overlayInstance) {

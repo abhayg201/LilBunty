@@ -285,4 +285,192 @@
     margin: 0 0 8px 0 !important;
     font-size: 14px !important;
     color: #374151 !important;
+}
+
+/* Tiptap Editor Styles */
+.editor-container {
+    width: 100% !important;
+}
+
+.editor-wrapper {
+    display: flex !important;
+    align-items: flex-end !important;
+    background: hsl(var(--background, 255 255 255)) !important;
+    border: 1px solid hsl(var(--border, 214 214 214)) !important;
+    border-radius: 12px !important;
+    overflow: hidden !important;
+    transition: border-color 0.2s ease !important;
+}
+
+.editor-content {
+    flex: 1 !important;
+    min-height: 44px !important;
+}
+
+.editor-content .ProseMirror {
+    padding: 12px 16px !important;
+    outline: none !important;
+    min-height: inherit !important;
+    font-size: 14px !important;
+    line-height: 1.5 !important;
+    color: hsl(var(--foreground, 9 9 11)) !important;
+    background: transparent !important;
+    border: none !important;
+    resize: none !important;
+    max-height: 200px !important;
+    overflow-y: auto !important;
+    font-family: system-ui, -apple-system, sans-serif !important;
+}
+
+.editor-content .ProseMirror p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder) !important;
+    float: left !important;
+    color: hsl(var(--muted-foreground, 115 115 115)) !important;
+    pointer-events: none !important;
+    height: 0 !important;
+}
+
+.editor-content .ProseMirror p {
+    margin: 0 !important;
+}
+
+.editor-controls {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 8px 12px !important;
+    background: hsl(var(--muted, 250 250 250) / 0.3) !important;
+}
+
+.model-selector select {
+    background: transparent !important;
+    border: none !important;
+    outline: none !important;
+    font-size: 12px !important;
+    color: hsl(var(--muted-foreground, 115 115 115)) !important;
+    cursor: pointer !important;
+    padding: 4px 8px !important;
+    border-radius: 6px !important;
+    transition: all 0.2s ease !important;
+    font-family: system-ui, -apple-system, sans-serif !important;
+}
+
+.model-selector select:hover {
+    background: hsl(var(--muted, 250 250 250)) !important;
+    color: hsl(var(--foreground, 9 9 11)) !important;
+}
+
+.model-selector select:disabled {
+    opacity: 0.5 !important;
+    cursor: not-allowed !important;
+}
+
+.send-button {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 32px !important;
+    height: 32px !important;
+    border: none !important;
+    background: hsl(var(--primary, 222 84% 5%)) !important;
+    color: hsl(var(--primary-foreground, 210 40% 98%)) !important;
+    border-radius: 8px !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+}
+
+.send-button:hover:not(:disabled) {
+    background: hsl(var(--primary, 222 84% 5%) / 0.9) !important;
+    transform: translateY(-1px) !important;
+}
+
+.send-button:active:not(:disabled) {
+    transform: translateY(0) !important;
+}
+
+.send-button:disabled {
+    opacity: 0.5 !important;
+    cursor: not-allowed !important;
+    transform: none !important;
+}
+
+/* Custom scrollbar for Tiptap editor */
+.editor-content .ProseMirror::-webkit-scrollbar {
+    width: 4px !important;
+}
+
+.editor-content .ProseMirror::-webkit-scrollbar-track {
+    background: transparent !important;
+}
+
+.editor-content .ProseMirror::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground, 115 115 115) / 0.3) !important;
+    border-radius: 2px !important;
+}
+
+.editor-content .ProseMirror::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground, 115 115 115) / 0.5) !important;
+}
+
+/* @ Commands Suggestion Dropdown */
+.suggestion-list {
+    background: white !important;
+    border: 1px solid hsl(var(--border, 214 214 214)) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+    max-width: 280px !important;
+    min-width: 200px !important;
+    z-index: 2147483647 !important;
+    font-family: system-ui, -apple-system, sans-serif !important;
+    overflow: hidden !important;
+}
+
+.suggestion-item {
+    padding: 12px 16px !important;
+    cursor: pointer !important;
+    border-bottom: 1px solid hsl(var(--border, 214 214 214)) !important;
+    transition: background-color 0.2s ease !important;
+}
+
+.suggestion-item:last-child {
+    border-bottom: none !important;
+}
+
+.suggestion-item:hover,
+.suggestion-item.selected {
+    background: hsl(var(--accent, 0 0% 96.1%)) !important;
+}
+
+.suggestion-label {
+    font-weight: 500 !important;
+    font-size: 14px !important;
+    color: hsl(var(--foreground, 9 9 11)) !important;
+    margin-bottom: 2px !important;
+}
+
+.suggestion-description {
+    font-size: 12px !important;
+    color: hsl(var(--muted-foreground, 115 115 115)) !important;
+    line-height: 1.3 !important;
+}
+
+/* Mention styling in the editor */
+.mention {
+    background: hsl(var(--primary, 222 84% 5%) / 0.1) !important;
+    color: hsl(var(--primary, 222 84% 5%)) !important;
+    padding: 2px 6px !important;
+    border-radius: 4px !important;
+    font-weight: 500 !important;
+    text-decoration: none !important;
+    display: inline-block !important;
+}
+
+.mention:hover {
+    background: hsl(var(--primary, 222 84% 5%) / 0.15) !important;
+}
+
+/* Suggestion container for @ commands */
+.suggestion-container {
+    position: relative !important;
+    z-index: 2147483647 !important;
 } 
