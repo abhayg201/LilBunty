@@ -2,16 +2,17 @@ import { mount, unmount } from "svelte";
 import Overlay from "../components/Overlay.svelte";
 import shadowStylesText from "./shadow-styles.css?inline";
 import appStylesText from "../app.css?inline";
-import { selectedText, chatContainerVisible } from "../lib/stores";
-// Content scripts
+import { selectedText, chatContainerVisible, overlayPosition } from "../lib/stores";
+import { setupStaticFloatingPosition, createScrollAwarePersistentVirtualElement } from "../lib/utils/floating-position";
+
 // https://developer.chrome.com/docs/extensions/mv3/content_scripts/
 
 // Import global styles
 import "./styles.css";
 let overlayInstance: any = null;
-let shadowHost: HTMLElement | null = null;
+let shadowHost: HTMLElement;
 let shadowRoot: ShadowRoot | null = null;
-let overlayContainer: HTMLElement | null = null;
+let overlayContainer: HTMLElement;
 
 function createOverlayContainer() {
     if (shadowHost && shadowRoot && overlayContainer) {
@@ -61,13 +62,35 @@ function showBuntyOverlay( x: number, y: number) {
         overlayInstance = null;
     }
     
-    // Update position on shadow host
-    if (shadowHost) {
-        shadowHost.style.top = `${Math.max(10, y)}px`;
-        shadowHost.style.left = `${Math.min(window.innerWidth - 300, Math.max(10, x))}px`;
-        shadowHost.style.display = 'block';
-    }
+    // Show the shadowHost
+    shadowHost.style.display = 'block';
+    
+    // Create virtual element based on actual selection bounds  
+    const virtualElement = createScrollAwarePersistentVirtualElement({ x, y });
 
+    // Set up static position that doesn't change during scroll
+    const cleanup = setupStaticFloatingPosition(
+        virtualElement,
+        shadowHost,
+        {
+            placement: 'right-start',
+            offsetValue: 10,
+            yAdjustment: 25,
+            fallbackPlacements: ['top-start', 'bottom-start', 'left-start'],
+            padding: 8
+        },
+        (posX, posY) => {
+            // Update the overlay position store
+            overlayPosition.set({ x: posX, y: posY });
+            console.log('ShadowHost statically positioned at:', { x: posX, y: posY });
+        }
+    );
+    
+    // Store cleanup function for later use
+    if (shadowHost) {
+        (shadowHost as any).__floatingCleanup = cleanup;
+    }
+    
     // Wait for the next tick to ensure the Svelte component is rendered
     setTimeout(() => {
         listenForChatOverlayMounted();
@@ -82,8 +105,7 @@ function showBuntyOverlay( x: number, y: number) {
         props: {
             visible: true
         }
-    })
-  
+    });
 }
 
 function listenForChatOverlayMounted() {
@@ -92,9 +114,7 @@ function listenForChatOverlayMounted() {
     if (!badgeOverlay) return;
     console.log("badgeOverlay", badgeOverlay);
     badgeOverlay.addEventListener('chat-overlay-mounted', () => {
-        setTimeout(() => {
-            setupDragListeners();
-        }, 10);
+        setupDragListeners();
     });
 }
 
@@ -173,6 +193,12 @@ function handleDragEnd() {
 function hideAvatarOverlay() {
     if (shadowHost) {
         shadowHost.style.display = 'none';
+        
+        // Cleanup autoUpdate if it exists
+        if ((shadowHost as any).__floatingCleanup) {
+            (shadowHost as any).__floatingCleanup();
+            (shadowHost as any).__floatingCleanup = null;
+        }
     }
     
     // Cleanup drag state if overlay is hidden while dragging
@@ -199,16 +225,29 @@ function debounce(func: Function, wait: number) {
     };
 }
 
+// Listen for chatContainerVisible store changes
+chatContainerVisible.subscribe((visible) => {
+    if (shadowHost) {
+        if (visible) {
+            shadowHost.style.display = 'block';
+        } else {
+            // Don't hide shadowHost here if badge is still showing
+            // Only hide when fully closing the overlay
+        }
+    }
+});
+
 // Listen for text selection with debouncing
 const handleMouseUp = debounce((event: MouseEvent) => {
     if (shadowHost && shadowHost.contains(event.target as Node)) return;
     try {
         const selection = window.getSelection();
         const text = selection?.toString().trim() || '';
-
         if (text) {
             chatContainerVisible.set(false);   
             selectedText.set(text);
+            
+            console.log(selection?.anchorNode);
             showBuntyOverlay(event.clientX, event.clientY - 60);
         } else {
             hideAvatarOverlay();
@@ -236,7 +275,6 @@ window.addEventListener('beforeunload', () => {
     }
     if (overlayContainer) {
         overlayContainer.remove();
-        overlayContainer = null;
     }
 });
 

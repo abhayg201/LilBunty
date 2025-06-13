@@ -13,3 +13,4 @@ export const threadError = writable<string | null>(null);
 // Thread UI state
 export const showThreadHistory = writable(false);
 export const threadSearchQuery = writable(''); 
+export const overlayPosition = writable({ x: 100, y: 100 }); 

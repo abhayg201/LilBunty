@@ -15,7 +15,8 @@
     currentThread,
     threadList,
     isLoadingThread,
-    showThreadHistory
+    showThreadHistory,
+    overlayPosition
   } from '../lib/stores'
   import {
     ContextService,
@@ -38,8 +39,7 @@
   let responseDiv: HTMLDivElement | null = null
   let shadowRoot: ShadowRoot | null = null
   let chatOverlay: HTMLDivElement | null = null
-  let pos = { x: 100, y: 100 }
-  let offset = { x: 0, y: 0 }
+  let dragOffset = { x: 0, y: 0 }
   let dragging = false
   let tiptapEditor: Tiptap | undefined
 
@@ -64,11 +64,12 @@
     const mountEvent = new CustomEvent('chat-overlay-mounted')
     chatOverlay?.dispatchEvent(mountEvent)
 
-    // Listen for position updates from content script
+    // Listen for position updates from content script (for dragging)
     if (chatOverlay) {
       chatOverlay.addEventListener('position-update', (e) => {
         const { x, y } = (e as CustomEvent<{x: number, y: number}>).detail;
-        pos = { x, y };
+        overlayPosition.set({ x, y });
+        console.log("position-update", x, y);
       });
     }
 
@@ -174,28 +175,34 @@
   function onDragStart(event: MouseEvent) {
     dragging = true
     console.log("onDragStart event", event);
-    offset = {
-      x: event.clientX - pos.x,
-      y: event.clientY - pos.y,
+    
+    // Get the shadowHost position for proper offset calculation
+    const shadowHost = shadowRoot?.host as HTMLElement;
+    if (shadowHost) {
+      const hostRect = shadowHost.getBoundingClientRect();
+      dragOffset = {
+        x: event.clientX - hostRect.left,
+        y: event.clientY - hostRect.top,
+      }
     }
     
     // Dispatch start event to content script
     const dragStartEvent = new CustomEvent('drag-start', { 
       detail: { 
-        offset,
-        initialPos: pos
+        offset: dragOffset,
+        initialPos: { x: 0, y: 0 } // shadowHost handles actual position
       } 
     })
     document.dispatchEvent(dragStartEvent)
   }
 
-  function onDragEnd() {
-    dragging = false
+  // function onDragEnd() {
+  //   dragging = false
     
-    // Dispatch end event to content script
-    const dragEndEvent = new CustomEvent('drag-end')
-    document.dispatchEvent(dragEndEvent)
-  }
+  //   // Dispatch end event to content script
+  //   const dragEndEvent = new CustomEvent('drag-end')
+  //   document.dispatchEvent(dragEndEvent)
+  // }
   // Predefined prompt templates
   const promptTemplates = [
     {
@@ -350,7 +357,6 @@
   <div
     class="chat-overlay {dragging ? 'dragging' : ''}"
     bind:this={chatOverlay}
-    style="left: {pos.x}px; top: {pos.y}px;"
   >
     <Card class="chat-card">
       <CardHeader class="pb-3">
@@ -547,16 +553,16 @@
   @keyframes slideIn {
     from {
       opacity: 0;
-      transform: translate(-50%, -50%) scale(0.95);
+      transform: scale(0.95);
     }
     to {
       opacity: 1;
-      transform: translate(-50%, -50%) scale(1);
+      transform: scale(1);
     }
   }
 
   .chat-overlay {
-    position: fixed;
+    position: relative;
     z-index: 10000;
     animation: slideIn 0.2s ease-out;
     filter: drop-shadow(0 25px 25px rgb(0 0 0 / 0.15));
