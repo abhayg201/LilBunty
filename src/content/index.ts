@@ -135,15 +135,13 @@ function setupDragListeners() {
         const { offset, initialPos } = (e as CustomEvent).detail;
         isDragging = true;
         dragOffset = offset;
-        // Add global event listeners
-        const root = document || window;
-        root.addEventListener('mousemove', handleDragMove as EventListener);
-        root.addEventListener('mouseup', handleDragEnd as EventListener);
+        // Add global event listeners only when dragging starts
+        document.addEventListener('mousemove', handleDragMove as EventListener);
+        document.addEventListener('mouseup', handleDragEnd as EventListener);
         document.body.classList.add('dragging-cursor');
         
         console.log('Drag started', { offset, initialPos });
     });
-    document.addEventListener('mouseup', handleDragEnd);
     // Listen for drag end events from the component
     document.addEventListener('drag-end', () => {
         handleDragEnd();
@@ -181,10 +179,9 @@ function handleDragEnd() {
     
     isDragging = false;
     
-    // Remove global event listeners
-    const root = shadowRoot || window;
-    root.removeEventListener('mousemove', handleDragMove as EventListener);
-    root.removeEventListener('mouseup', handleDragEnd as EventListener);
+    // Remove global event listeners that were added during drag start
+    document.removeEventListener('mousemove', handleDragMove as EventListener);
+    document.removeEventListener('mouseup', handleDragEnd as EventListener);
     document.body.classList.remove('dragging-cursor');
     
     console.log('Drag ended');

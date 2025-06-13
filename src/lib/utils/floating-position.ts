@@ -218,13 +218,13 @@ export function setupFloatingPosition(
     
     try {
       computePosition(referenceElement, floatingElement, {
-        strategy: 'fixed',
+        strategy: 'fixed', 
         placement,
         middleware: [
           offset(offsetValue),
-          // flip({ fallbackPlacements }),
-          hide(),
-          // shift({ padding }),
+          flip({ fallbackPlacements }),
+          // hide(),
+          shift({ padding }),
         ]
       }).then(({x, y}) => {
         if (isDestroyed) return;
@@ -267,9 +267,9 @@ export function setupFloatingPosition(
   // Set up autoUpdate with proper cleanup
   const cleanup = autoUpdate(referenceElement, floatingElement, updatePosition,{
     layoutShift: false,
-    // ancestorScroll: true,
-    ancestorResize: false,
-    animationFrame: true,
+    ancestorScroll: false,
+    // ancestorResize: false,
+    // animationFrame: true,
   });
 
   return () => {
