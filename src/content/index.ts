@@ -3,7 +3,7 @@ import Overlay from "../components/Overlay.svelte";
 import shadowStylesText from "./shadow-styles.css?inline";
 import appStylesText from "../app.css?inline";
 import { selectedText, chatContainerVisible, overlayPosition } from "../lib/stores";
-import { setupStaticFloatingPosition, createScrollAwarePersistentVirtualElement } from "../lib/utils/floating-position";
+import { setupFloatingPosition, createScrollAwarePersistentVirtualElement } from "../lib/utils/floating-position";
 
 // https://developer.chrome.com/docs/extensions/mv3/content_scripts/
 
@@ -69,7 +69,7 @@ function showBuntyOverlay( x: number, y: number) {
     const virtualElement = createScrollAwarePersistentVirtualElement({ x, y });
 
     // Set up static position that doesn't change during scroll
-    const cleanup = setupStaticFloatingPosition(
+    const cleanup = setupFloatingPosition(
         virtualElement,
         shadowHost,
         {
@@ -79,7 +79,7 @@ function showBuntyOverlay( x: number, y: number) {
             fallbackPlacements: ['top-start', 'bottom-start', 'left-start'],
             padding: 8
         },
-        (posX, posY) => {
+        (posX: any, posY: any) => {
             // Update the overlay position store
             overlayPosition.set({ x: posX, y: posY });
             console.log('ShadowHost statically positioned at:', { x: posX, y: posY });

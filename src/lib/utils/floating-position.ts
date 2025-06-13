@@ -1,4 +1,4 @@
-import { computePosition, flip, shift, offset, autoUpdate, type Placement } from '@floating-ui/dom';
+import { computePosition, flip, shift, offset, autoUpdate,hide, type Placement } from '@floating-ui/dom';
 
 export interface PositionConfig {
   placement?: Placement;
@@ -197,80 +197,86 @@ export function createScrollAwarePersistentVirtualElement(initialPos?: { x: numb
   };
 }
 
-// export function setupFloatingPosition(
-//   referenceElement: VirtualElement,
-//   floatingElement: HTMLElement,
-//   config: PositionConfig = {},
-//   onUpdate?: (x: number, y: number) => void
-// ): () => void {
-//   const {
-//     placement = 'right-start',
-//     offsetValue = 10,
-//     yAdjustment = 25,
-//     fallbackPlacements = ['top-start', 'bottom-start', 'left-start'],
-//     padding = 8
-//   } = config;
+export function setupFloatingPosition(
+  referenceElement: VirtualElement,
+  floatingElement: HTMLElement,
+  config: PositionConfig = {},
+  onUpdate?: (x: number, y: number) => void
+): () => void {
+  const {
+    placement = 'right-start',
+    offsetValue = 10,
+    yAdjustment = 25,
+    fallbackPlacements = ['top-end', 'bottom-start', 'left-start'],
+    padding = 8
+  } = config;
 
-//   let isDestroyed = false;
+  let isDestroyed = false;
 
-//   const updatePosition = () => {
-//     if (isDestroyed) return;
+  const updatePosition = () => {
+    if (isDestroyed) return;
     
-//     try {
-//       computePosition(referenceElement, floatingElement, {
-//         strategy: 'fixed',
-//         placement,
-//         middleware: [
-//           offset(offsetValue),
-//           flip({ fallbackPlacements }),
-//           shift({ padding })
-//         ]
-//       }).then(({x, y}) => {
-//         if (isDestroyed) return;
+    try {
+      computePosition(referenceElement, floatingElement, {
+        strategy: 'fixed',
+        placement,
+        middleware: [
+          offset(offsetValue),
+          // flip({ fallbackPlacements }),
+          hide(),
+          // shift({ padding }),
+        ]
+      }).then(({x, y}) => {
+        if (isDestroyed) return;
         
-//         const finalY = y + yAdjustment;
+        const finalY = y + yAdjustment;
         
-//         // Validate the computed position
-//         if (isNaN(x) || isNaN(finalY) || x < -10000 || y < -10000) {
-//           console.warn('Invalid position computed, skipping update:', { x, y: finalY });
-//           return;
-//         }
+        // Validate the computed position
+        if (isNaN(x) || isNaN(finalY) || x < -10000 || y < -10000) {
+          console.warn('Invalid position computed, skipping update:', { x, y: finalY });
+          return;
+        }
         
-//         Object.assign(floatingElement.style, {
-//           top: `${finalY}px`,
-//           left: `${x}px`,
-//           display: 'block',
-//         });
+        Object.assign(floatingElement.style, {
+          top: `${finalY}px`,
+          left: `${x}px`,
+          display: 'block',
+        });
         
-//         if (onUpdate) {
-//           onUpdate(x, finalY);
-//         }
+        if (onUpdate) {
+          onUpdate(x, finalY);
+        }
         
-//         console.log('Positioned element at:', { x, y: finalY });
-//       }).catch(error => {
-//         if (isDestroyed) return;
+        console.log('Positioned element at:', { x, y: finalY });
+      }).catch(error => {
+        if (isDestroyed) return;
         
-//         console.error('Positioning failed:', error);
+        console.error('Positioning failed:', error);
         
-//         // Don't reset to fallback position during scroll, keep current position
-//         console.log('Keeping current position due to positioning error');
-//       });
-//     } catch (error) {
-//       console.error('Critical positioning error:', error);
-//     }
-//   };
+        // Don't reset to fallback position during scroll, keep current position
+        console.log('Keeping current position due to positioning error');
+      });
+    } catch (error) {
+      console.error('Critical positioning error:', error);
+    }
+  };
 
-//   // Initial positioning
-//   updatePosition();
+  // Initial positioning
+  updatePosition();
 
-//   // Set up autoUpdate with proper cleanup
-//   const cleanup = autoUpdate(referenceElement, floatingElement, updatePosition);
+  // Set up autoUpdate with proper cleanup
+  const cleanup = autoUpdate(referenceElement, floatingElement, updatePosition,{
+    layoutShift: false,
+    // ancestorScroll: true,
+    ancestorResize: false,
+    animationFrame: true,
+  });
 
-//   return () => {
-//     isDestroyed = true;
-//     cleanup();
-//   };
-// }
+  return () => {
+    isDestroyed = true;
+    cleanup();
+  };
+}
 
 // export function setupFloatingPositionForSvelte(
 //   referenceElement: VirtualElement,
@@ -316,74 +322,74 @@ export function createScrollAwarePersistentVirtualElement(initialPos?: { x: numb
 //   });
 // }
 
-export function setupStaticFloatingPosition(
-  referenceElement: VirtualElement,
-  floatingElement: HTMLElement,
-  config: PositionConfig = {},
-  onUpdate?: (x: number, y: number) => void
-): () => void {
-  const {
-    placement = 'right-start',
-    offsetValue = 10,
-    yAdjustment = 25,
-    fallbackPlacements = ['top-start', 'bottom-start', 'left-start'],
-    padding = 8
-  } = config;
+// export function setupStaticFloatingPosition(
+//   referenceElement: VirtualElement,
+//   floatingElement: HTMLElement,
+//   config: PositionConfig = {},
+//   onUpdate?: (x: number, y: number) => void
+// ): () => void {
+//   const {
+//     placement = 'right-start',
+//     offsetValue = 10,
+//     yAdjustment = 25,
+//     fallbackPlacements = ['top-start', 'bottom-start', 'left-start'],
+//     padding = 8
+//   } = config;
 
-  let isDestroyed = false;
+//   let isDestroyed = false;
 
-  const positionOnce = () => {
-    if (isDestroyed) return;
+//   const positionOnce = () => {
+//     if (isDestroyed) return;
     
-    try {
-      computePosition(referenceElement, floatingElement, {
-        strategy: 'fixed',
-        placement,
-        middleware: [
-          offset(offsetValue),
-          flip({ fallbackPlacements }),
-          shift({ padding })
-        ]
-      }).then(({x, y}) => {
-        if (isDestroyed) return;
+//     try {
+//       computePosition(referenceElement, floatingElement, {
+//         strategy: 'fixed',
+//         placement,
+//         middleware: [
+//           offset(offsetValue),
+//           flip({ fallbackPlacements }),
+//           shift({ padding })
+//         ]
+//       }).then(({x, y}) => {
+//         if (isDestroyed) return;
         
-        const finalY = y + yAdjustment;
+//         const finalY = y + yAdjustment;
         
-        // Validate the computed position
-        if (isNaN(x) || isNaN(finalY) || x < -10000 || y < -10000) {
-          console.warn('Invalid position computed, using fallback');
-          x = 100;
-          y = 100;
-        }
+//         // Validate the computed position
+//         if (isNaN(x) || isNaN(finalY) || x < -10000 || y < -10000) {
+//           console.warn('Invalid position computed, using fallback');
+//           x = 100;
+//           y = 100;
+//         }
         
-        Object.assign(floatingElement.style, {
-          top: `${finalY}px`,
-          left: `${x}px`,
-          display: 'block',
-        });
+//         Object.assign(floatingElement.style, {
+//           top: `${finalY}px`,
+//           left: `${x}px`,
+//           display: 'block',
+//         });
         
-        if (onUpdate) {
-          onUpdate(x, finalY);
-        }
+//         if (onUpdate) {
+//           onUpdate(x, finalY);
+//         }
         
-        console.log('Static positioned element at:', { x, y: finalY });
-      }).catch(error => {
-        console.error('Static positioning failed:', error);
+//         console.log('Static positioned element at:', { x, y: finalY });
+//       }).catch(error => {
+//         console.error('Static positioning failed:', error);
         
-        // Fallback positioning
-        floatingElement.style.top = '100px';
-        floatingElement.style.left = '100px';
-        floatingElement.style.display = 'block';
-      });
-    } catch (error) {
-      console.error('Critical static positioning error:', error);
-    }
-  };
+//         // Fallback positioning
+//         floatingElement.style.top = '100px';
+//         floatingElement.style.left = '100px';
+//         floatingElement.style.display = 'block';
+//       });
+//     } catch (error) {
+//       console.error('Critical static positioning error:', error);
+//     }
+//   };
 
-  // Position once only - no autoUpdate
-  positionOnce();
+//   // Position once only - no autoUpdate
+//   positionOnce();
 
-  return () => {
-    isDestroyed = true;
-  };
-} 
+//   return () => {
+//     isDestroyed = true;
+//   };
+// } 
