@@ -1,13 +1,21 @@
+import OpenAI from 'openai';
+import type { ResponseStreamEvent } from 'openai/resources/responses/responses.mjs';
+import type { Stream } from 'openai/streaming';
+
 export class OpenAIService {
-  
+  private static openai: OpenAI | null = null;
+
+  static async init(apiKey: string) {
+    this.openai = new OpenAI({ apiKey });
+  }
+
   static async queryOpenAI({
     systemPrompt,
     userPrompt,
-    apiKey,
-    model = "gpt-4",
+    model = 'gpt-4',
     temperature = 0.7,
     stream = false,
-    onStream
+    onStream,
   }: {
     systemPrompt: string;
     userPrompt: string;
@@ -17,68 +25,29 @@ export class OpenAIService {
     stream?: boolean;
     onStream?: (chunk: string) => void;
   }): Promise<string> {
-    if (!apiKey) throw new Error("OpenAI API key not configured");
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
-        ],
-        temperature,
-        stream,
-      }),
-    });
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`API error: ${response.status} - ${errorText}`);
+    if (!this.openai) {
+      throw new Error('OpenAI not initialized');
     }
-    if (!stream) {
-      const data = await response.json();
-      return data.choices?.[0]?.message?.content || "No response.";
-    } else {
-      return await OpenAIService.streamOpenAIResponse(response, onStream);
+    const stream_response = (await this.openai.responses.create({
+      model,
+      input: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      temperature,
+      stream,
+    })) as Stream<ResponseStreamEvent>;
+
+    for await (const chunk of stream_response) {
+      console.log('chunk', chunk);
+      if (onStream) this.streamOpenAIResponse(chunk, onStream);
     }
+    return '';
   }
 
-  static async streamOpenAIResponse(
-    response: Response,
-    onStream?: (chunk: string) => void
-  ): Promise<string> {
-    const reader = response.body?.getReader();
-    if (!reader) throw new Error("No stream reader available");
-    let result = '';
-    const decoder = new TextDecoder();
-    let done = false;
-    while (!done) {
-      const { value, done: doneReading } = await reader.read();
-      done = doneReading;
-      if (value) {
-        const chunk = decoder.decode(value, { stream: true });
-        // OpenAI streams data as lines starting with 'data: '
-        const lines = chunk.split('\n').filter(line => line.trim().startsWith('data: '));
-        for (const line of lines) {
-          const dataStr = line.replace('data: ', '').trim();
-          if (dataStr === '[DONE]') continue;
-          try {
-            const data = JSON.parse(dataStr);
-            const content = data.choices?.[0]?.delta?.content;
-            if (content) {
-              result += content;
-              if (onStream) onStream(content);
-            }
-          } catch (e) {
-            // Ignore JSON parse errors for incomplete chunks
-            console.error(e);
-          }
-        }
-      }
+  static streamOpenAIResponse(chunk: ResponseStreamEvent, onStream?: (chunk: string) => void) {
+    if (chunk.type === 'response.output_text.delta') {
+      if (onStream) onStream(chunk.delta);
     }
-    return result || "No response.";
   }
-} 
+}

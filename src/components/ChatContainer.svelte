@@ -9,11 +9,21 @@
   } from '$lib/components/ui/card'
   import { Button } from '$lib/components/ui/button'
   import { Separator } from '$lib/components/ui/separator'
-  import { chatContainerVisible, selectedText } from '../lib/stores'
+  import { 
+    chatContainerVisible, 
+    selectedText,
+    currentThread,
+    threadList,
+    isLoadingThread,
+    showThreadHistory
+  } from '../lib/stores'
   import {
     ContextService,
     type UserPreferences,
   } from '../services/context-service'
+  import { ThreadService } from '../services/thread-service'
+  import { ThreadMessaging, BrowserMessaging } from '../services/browser-messaging'
+  import type { Thread, Message } from '../models/thread'
   import { onDestroy, onMount } from 'svelte'
   import { marked, type MarkedOptions } from 'marked'
   import hljs from 'highlight.js'
@@ -34,8 +44,18 @@
   let tiptapEditor: Tiptap | undefined
 
   const userPrefs: Partial<UserPreferences> = {}
+  const threadService = ThreadService.getInstance()
+  
+  let currentThreadData: Thread | null = null
+  let messages: Message[] = []
+  
+  // Subscribe to current thread changes
+  $: if ($currentThread) {
+    currentThreadData = $currentThread
+    messages = currentThreadData?.messages || []
+  }
 
-  onMount(() => {
+  onMount(async () => {
     // Find the shadow root (if any)
     if (chatOverlay) {
       shadowRoot = chatOverlay!.getRootNode() as ShadowRoot
@@ -51,7 +71,105 @@
         pos = { x, y };
       });
     }
+
+    // Initialize thread management
+    await initializeThread()
+    await loadThreadHistory()
   })
+
+  async function initializeThread() {
+    if (!$selectedText) return
+    console.log("New thread init")
+    isLoadingThread.set(true)
+    try {
+      // First, check if there's an existing thread for this selected text and URL
+      const currentUrl = window.location.href
+      const summariesResponse = await ThreadMessaging.getThreadSummaries({ domain: extractDomain(currentUrl) }, 10)
+      
+      if (summariesResponse.success) {
+        // Look for a thread with the same selected text
+        const existingThread = summariesResponse.data.find((summary: any) => 
+          summary.selectedText === $selectedText
+        )
+        
+        if (existingThread) {
+          // Load the existing thread
+          const threadResponse = await ThreadMessaging.getThread(existingThread.id)
+          if (threadResponse.success && threadResponse.data) {
+            currentThread.set(threadResponse.data)
+            return
+          }
+        }
+      }
+      
+      // Create a new thread if no existing one found
+      const response = await ThreadMessaging.createThread($selectedText, currentUrl)
+      if (response.success) {
+        currentThread.set(response.data)
+      }
+    } catch (error) {
+      console.error('Error initializing thread:', error)
+    } finally {
+      isLoadingThread.set(false)
+    }
+  }
+
+  function extractDomain(url: string): string {
+    try {
+      const urlObj = new URL(url)
+      return urlObj.hostname.replace('www.', '')
+    } catch {
+      return 'unknown'
+    }
+  }
+
+  async function loadThreadHistory() {
+    try {
+      const response = await ThreadMessaging.getThreadSummaries({}, 20)
+      if (response.success) {
+        threadList.set(response.data)
+      }
+    } catch (error) {
+      console.error('Error loading thread history:', error)
+    }
+  }
+
+  async function loadThread(threadId: string) {
+    isLoadingThread.set(true)
+    try {
+      const threadResponse = await ThreadMessaging.getThread(threadId)
+      if (threadResponse.success && threadResponse.data) {
+        currentThread.set(threadResponse.data)
+        // Clear any current response being typed
+        response = ''
+        if (tiptapEditor) {
+          tiptapEditor.clear()
+        }
+      }
+    } catch (error) {
+      console.error('Error loading thread:', error)
+    } finally {
+      isLoadingThread.set(false)
+    }
+  }
+
+  async function toggleThreadFavorite(threadId: string) {
+    try {
+      await ThreadMessaging.toggleFavorite(threadId)
+      // Refresh thread list to show updated favorite status
+      await loadThreadHistory()
+      
+      // Also refresh current thread if it's the one being favorited
+      if ($currentThread?.id === threadId) {
+        const threadResponse = await ThreadMessaging.getThread(threadId)
+        if (threadResponse.success && threadResponse.data) {
+          currentThread.set(threadResponse.data)
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling thread favorite:', error)
+    }
+  }
 
   function onDragStart(event: MouseEvent) {
     dragging = true
@@ -116,6 +234,10 @@
     selectedPromptType = ''
     loading = false
     if (port) port.disconnect()
+    
+    // Clear thread state
+    currentThread.set(null)
+    showThreadHistory.set(false)
   }
 
   function selectPromptTemplate(template: (typeof promptTemplates)[0]) {
@@ -130,9 +252,21 @@
   }
 
   async function sendToGPT() {
-    if (!$selectedText) return
+    if (!$selectedText || !$currentThread) return
 
     const finalPrompt = tiptapEditor?.getText() || 'Please help me understand this text:'
+    
+    // Save user message to thread
+    try {
+      await ThreadMessaging.addMessage($currentThread.id, 'user', finalPrompt)
+      // Refresh current thread data
+      const threadResponse = await ThreadMessaging.getThread($currentThread.id)
+      if (threadResponse.success && threadResponse.data) {
+        currentThread.set(threadResponse.data)
+      }
+    } catch (error) {
+      console.error('Error saving user message:', error)
+    }
 
     loading = true
     response = ''
@@ -142,19 +276,21 @@
     }
 
     // Open a port for streaming
-    port = chrome.runtime.connect()
+    const messaging = BrowserMessaging.getInstance()
+    port = messaging.connect()
     port.postMessage({
       type: 'QUERY_OPENAI_STREAM',
       payload: {
         systemPrompt: finalPrompt,
         userPrompt: $selectedText,
+        threadId: $currentThread.id, // Pass thread ID for context
       },
     })
 
     port.onMessage.addListener(handleStreamMessage)
   }
 
-  function handleStreamMessage(msg: any) {
+  async function handleStreamMessage(msg: any) {
     if (msg.type === 'STREAM_CHUNK') {
       response += msg.chunk
 
@@ -165,6 +301,26 @@
     } else if (msg.type === 'STREAM_DONE') {
       loading = false
       port.disconnect()
+      
+      // Save assistant response to thread
+      if (response && $currentThread) {
+        try {
+          await ThreadMessaging.addMessage($currentThread.id, 'assistant', response)
+          // Refresh current thread data and thread list
+          const threadResponse = await ThreadMessaging.getThread($currentThread.id)
+          if (threadResponse.success && threadResponse.data) {
+            currentThread.set(threadResponse.data)
+          }
+          await loadThreadHistory() // Refresh thread list
+          
+          // Clear the editor for next message
+          if (tiptapEditor) {
+            tiptapEditor.clear()
+          }
+        } catch (error) {
+          console.error('Error saving assistant message:', error)
+        }
+      }
     } else if (msg.type === 'STREAM_ERROR') {
       response = 'Error: ' + msg.error
       loading = false
@@ -236,6 +392,57 @@
         <CardDescription>Chat about your selected text</CardDescription>
       </CardHeader>
 
+        <!-- Conversation History -->
+        {#if messages.length > 0 || loading}
+          <Separator />
+          <div class="conversation-section">
+            <div class="flex items-center justify-between mb-3">
+              <h4 class="text-sm font-medium">Conversation:</h4>
+              <div class="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  on:click={() => showThreadHistory.set(!$showThreadHistory)}
+                  class="text-xs"
+                >
+                  {$showThreadHistory ? 'Hide' : 'Show'} History
+                </Button>
+              </div>
+            </div>
+            
+            <div class="messages-container max-h-60 overflow-y-auto space-y-3" bind:this={responseDiv}>
+              {#each messages as message}
+                <div class="message-bubble {message.role}">
+                  <div class="message-header">
+                    <span class="message-role">{message.role === 'user' ? 'You' : 'AI'}</span>
+                    <span class="message-time">{new Date(message.timestamp).toLocaleTimeString()}</span>
+                  </div>
+                  <div class="message-content markdown-body">
+                    {@html marked.parse(message.content)}
+                  </div>
+                </div>
+              {/each}
+              
+              {#if loading}
+                <div class="message-bubble assistant">
+                  <div class="message-header">
+                    <span class="message-role">AI</span>
+                    <div class="flex items-center space-x-2 text-sm text-muted-foreground">
+                      <div class="animate-spin h-3 w-3 border-2 border-primary border-t-transparent rounded-full"></div>
+                      <span>{response ? 'Streaming...' : 'Thinking...'}</span>
+                    </div>
+                  </div>
+                  {#if response}
+                    <div class="message-content markdown-body">
+                      {@html marked.parse(response)}
+                    </div>
+                  {/if}
+                </div>
+              {/if}
+            </div>
+          </div>
+        {/if}
+
       <CardContent class="space-y-4">
         <!-- Selected Text Display -->
         <div class="selected-text-section">
@@ -279,33 +486,56 @@
           />
         </div>
 
-        <!-- Response Section -->
-        {#if loading || response}
+      
+
+        <!-- Thread History Panel -->
+        {#if $showThreadHistory}
           <Separator />
-          <div class="response-section">
-            <h4 class="text-sm font-medium mb-2">Response:</h4>
-            {#if loading}
-              <div
-                class="flex items-center mb-2 space-x-2 text-sm text-muted-foreground"
-              >
-                <div
-                  class="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full"
-                ></div>
-                <span>
-                  {response
-                    ? 'Streaming response...'
-                    : 'Waiting for response...'}
-                </span>
-              </div>
-            {/if}
-            {#if response}
-              <div
-                class="bg-muted p-3 rounded-md text-sm max-h-40 overflow-y-auto markdown-body"
-                bind:this={responseDiv}
-              >
-                {@html marked.parse(response)}
-              </div>
-            {/if}
+          <div class="thread-history-section">
+            <h4 class="text-sm font-medium mb-3">Recent Conversations:</h4>
+            <div class="thread-list max-h-40 overflow-y-auto space-y-2">
+              {#if $isLoadingThread}
+                <div class="flex items-center justify-center py-4">
+                  <div class="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full"></div>
+                  <span class="ml-2 text-xs text-muted-foreground">Loading...</span>
+                </div>
+              {:else}
+                {#each $threadList as threadSummary}
+                  <div
+                    class="thread-item p-2 rounded-md border cursor-pointer hover:bg-muted/50 transition-colors"
+                    class:active={$currentThread?.id === threadSummary.id}
+                    on:click={() => loadThread(threadSummary.id)}
+                    role="button"
+                    tabindex="0"
+                  >
+                    <div class="flex items-start justify-between">
+                      <div class="flex-1 min-w-0">
+                        <div class="text-xs font-medium truncate">{threadSummary.title}</div>
+                        <div class="text-xs text-muted-foreground truncate mt-1">{threadSummary.domain}</div>
+                        <div class="text-xs text-muted-foreground mt-1">
+                          {threadSummary.messageCount} messages • {new Date(threadSummary.updatedAt).toLocaleDateString()}
+                        </div>
+                      </div>
+                      <button
+                        class="text-xs hover:scale-110 transition-transform"
+                        class:text-yellow-500={threadSummary.favorite}
+                        class:text-gray-400={!threadSummary.favorite}
+                        on:click|stopPropagation={() => toggleThreadFavorite(threadSummary.id)}
+                        title={threadSummary.favorite ? 'Remove from favorites' : 'Add to favorites'}
+                      >
+                        ★
+                      </button>
+                    </div>
+                  </div>
+                {/each}
+                
+                {#if $threadList.length === 0}
+                  <div class="text-xs text-muted-foreground text-center py-4">
+                    No previous conversations
+                  </div>
+                {/if}
+              {/if}
+            </div>
           </div>
         {/if}
       </CardContent>
@@ -371,7 +601,8 @@
 
   .selected-text-section,
   .custom-prompt,
-  .response-section {
+  .conversation-section,
+  .thread-history-section {
     animation: fadeInUp 0.3s ease-out;
   }
 
@@ -422,16 +653,91 @@
     margin-bottom: 12px;
   }
 
-  .response-section {
+  .conversation-section,
+  .thread-history-section {
     background: linear-gradient(135deg, hsl(var(--primary) / 0.05), transparent);
     border-radius: 8px;
     padding: 16px;
   }
 
-  .response-section h4 {
+  .conversation-section h4,
+  .thread-history-section h4 {
     color: hsl(var(--primary));
     font-weight: 600;
     margin-bottom: 12px;
+  }
+
+  .messages-container {
+    scrollbar-width: thin;
+  }
+
+  .message-bubble {
+    background: hsl(var(--background));
+    border: 1px solid hsl(var(--border));
+    border-radius: 12px;
+    padding: 12px;
+    position: relative;
+  }
+
+  .message-bubble.user {
+    background: linear-gradient(135deg, hsl(var(--primary) / 0.1), hsl(var(--primary) / 0.05));
+    border-color: hsl(var(--primary) / 0.2);
+    margin-left: 20px;
+  }
+
+  .message-bubble.assistant {
+    background: linear-gradient(135deg, hsl(var(--accent) / 0.1), hsl(var(--accent) / 0.05));
+    border-color: hsl(var(--accent) / 0.2);
+    margin-right: 20px;
+  }
+
+  .message-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .message-role {
+    font-weight: 600;
+    font-size: 0.75rem;
+    color: hsl(var(--primary));
+  }
+
+  .message-time {
+    font-size: 0.7rem;
+    color: hsl(var(--muted-foreground));
+  }
+
+  .message-content {
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+
+  .message-content :global(p) {
+    margin: 4px 0;
+  }
+
+  .message-content :global(p:first-child) {
+    margin-top: 0;
+  }
+
+  .message-content :global(p:last-child) {
+    margin-bottom: 0;
+  }
+
+  .thread-item {
+    transition: all 0.2s ease;
+  }
+
+  .thread-item:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgb(0 0 0 / 0.1);
+  }
+
+  .thread-item.active {
+    background: hsl(var(--primary) / 0.1);
+    border-color: hsl(var(--primary));
   }
 
   .markdown-body {
