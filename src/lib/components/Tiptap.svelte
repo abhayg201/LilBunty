@@ -6,6 +6,8 @@
 	import Mention from '@tiptap/extension-mention';
 	import { selectedText } from '../stores';
 	import { get } from 'svelte/store';
+	import * as DropdownMenu from "$lib/components/ui/dropdown-menu/index.js";
+
 
 	export let content = '';
 	export let placeholder = 'Ask anything';
@@ -16,6 +18,8 @@
 	let editor: Editor | null = null;
 	let suggestionContainer: HTMLDivElement;
 	let selectedModel = 'gpt-4';
+	let modelSearchQuery = '';
+	let isModelDropdownOpen = false;
 	
 	const dispatch = createEventDispatcher<{
 		update: { content: string };
@@ -26,7 +30,19 @@
 		{ value: 'gpt-4', label: 'GPT-4' },
 		{ value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
 		{ value: 'claude-3', label: 'Claude 3' },
+		{ value: 'claude-3.5-sonnet', label: 'Claude 3.5 Sonnet' },
+		{ value: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
+		{ value: 'gemini-pro', label: 'Gemini Pro' },
 	];
+
+	// Filter models based on search query
+	$: filteredModels = models.filter(model =>
+		model.label.toLowerCase().includes(modelSearchQuery.toLowerCase()) ||
+		model.value.toLowerCase().includes(modelSearchQuery.toLowerCase())
+	);
+
+	// Get selected model label for display
+	$: selectedModelLabel = models.find(m => m.value === selectedModel)?.label || selectedModel;
 
 	// @ Commands configuration
 	const commands = [
@@ -265,10 +281,49 @@
 	$: if (editor) {
 		editor.setEditable(!disabled);
 	}
+
+	function selectModel(modelValue: string) {
+		selectedModel = modelValue;
+		isModelDropdownOpen = false;
+		modelSearchQuery = '';
+	}
+
+	function handleModelSearch(event: Event) {
+		const target = event.target as HTMLInputElement;
+		modelSearchQuery = target.value;
+	}
 </script>
 
+<!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="editor-container" on:keydown={handleKeydown}>
 	<div class="editor-wrapper">
+		
+		<div class="editor-context-wrapper">
+			<div class="editor-context-item"
+			style="font-weight: 700 !important;">
+				@
+			</div>
+			<div class="editor-context-item">
+				justify-content
+			</div>
+			<div class="editor-context-item">
+				justify-content
+			</div>
+			<div class="editor-context-item">
+				justify-content
+			</div>
+			<div class="editor-context-item">
+				justify-content
+			</div>
+			<div class="editor-context-item">
+				justify-content
+			</div>
+			<div class="editor-context-item">
+				justify-content
+			</div>
+		</div>
+
+		<!-- svelte-ignore element_invalid_self_closing_tag -->
 		<div 
 			bind:this={element} 
 			class="editor-content"
@@ -276,6 +331,47 @@
 		/>
 		
 		<div class="editor-controls">
+			<!-- Model Selector Dropdown -->
+			<DropdownMenu.Root bind:open={isModelDropdownOpen}>
+				<DropdownMenu.Trigger class="model-selector-trigger">
+					<span class="model-label">{selectedModelLabel}</span>
+					<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="chevron-icon">
+						<path d="M6 9l6 6 6-6"/>
+					</svg>
+				</DropdownMenu.Trigger>
+				<DropdownMenu.Content class="model-dropdown-content" align="end">
+					<div class="model-search-container">
+						<input
+							type="text"
+							placeholder="Search models..."
+							class="model-search-input"
+							bind:value={modelSearchQuery}
+							on:input={handleModelSearch}
+						/>
+					</div>
+					<DropdownMenu.Separator />
+					{#each filteredModels as model}
+						<DropdownMenu.Item 
+							class="model-item {selectedModel === model.value ? 'selected' : ''}"
+							on:click={() => selectModel(model.value)}
+						>
+							<span class="model-name">{model.label}</span>
+							{#if selectedModel === model.value}
+								<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="check-icon">
+									<path d="M20 6L9 17l-5-5"/>
+								</svg>
+							{/if}
+						</DropdownMenu.Item>
+					{/each}
+					{#if filteredModels.length === 0}
+						<div class="no-models-found">
+							No models found
+						</div>
+					{/if}
+				</DropdownMenu.Content>
+			</DropdownMenu.Root>
+
+			<!-- Send Button -->
 			<button 
 				type="button"
 				class="send-button" 

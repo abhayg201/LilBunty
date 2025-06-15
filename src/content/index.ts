@@ -224,6 +224,7 @@ function debounce(func: Function, wait: number) {
 
 // Listen for chatContainerVisible store changes
 chatContainerVisible.subscribe((visible) => {
+    console.log('visible', visible);
     if (shadowHost) {
         if (visible) {
             shadowHost.style.display = 'block';

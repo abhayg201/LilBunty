@@ -19,7 +19,6 @@
     overlayPosition
   } from '../lib/stores'
   import {
-    ContextService,
     type UserPreferences,
   } from '../services/context-service'
   import { ThreadService } from '../services/thread-service'
@@ -487,7 +486,7 @@
             bind:this={tiptapEditor}
             placeholder="Ask anything"
             disabled={loading}
-            minHeight="44px"
+            minHeight="32px"
             on:send={handleTiptapSend}
           />
         </div>
@@ -507,6 +506,7 @@
                 </div>
               {:else}
                 {#each $threadList as threadSummary}
+                  <!-- svelte-ignore a11y_click_events_have_key_events -->
                   <div
                     class="thread-item p-2 rounded-md border cursor-pointer hover:bg-muted/50 transition-colors"
                     class:active={$currentThread?.id === threadSummary.id}
