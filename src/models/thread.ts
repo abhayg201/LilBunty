@@ -1,7 +1,11 @@
 export interface Message {
   id: string;
   role: 'user' | 'assistant';
-  content: string;
+  content: string; // User or assistant message
+  context: {
+    selectedText?: string;
+    [key: string]: any;
+  };
   timestamp: number;
   metadata?: {
     model?: string;
@@ -13,7 +17,6 @@ export interface Message {
 export interface Thread {
   id: string;
   title: string;
-  selectedText: string;
   url: string;
   domain: string;
   messages: Message[];
@@ -26,7 +29,6 @@ export interface Thread {
 export interface ThreadSummary {
   id: string;
   title: string;
-  selectedText: string;
   domain: string;
   messageCount: number;
   createdAt: number;
@@ -39,37 +41,36 @@ export interface ThreadSummary {
 export function createMessage(
   role: 'user' | 'assistant',
   content: string,
-  metadata?: Message['metadata']
+  metadata?: Message['metadata'],
+  context?: Message['context']
 ): Message {
   return {
     id: generateId(),
     role,
     content,
     timestamp: Date.now(),
-    metadata
+    metadata,
+    context: context || {},
   };
 }
 
-export function createThread(selectedText: string, url: string): Thread {
+export function createThread(url: string): Thread {
   const domain = extractDomain(url);
   return {
     id: generateId(),
-    title: generateThreadTitle(selectedText),
-    selectedText,
+    title: generateThreadTitle(domain),
     url,
     domain,
     messages: [],
     createdAt: Date.now(),
-    updatedAt: Date.now()
+    updatedAt: Date.now(),
   };
 }
 
-export function generateThreadTitle(selectedText: string): string {
+export function generateThreadTitle(url: string): string {
   // Create a meaningful title from selected text
-  const truncated = selectedText.length > 50 
-    ? selectedText.substring(0, 50) + '...' 
-    : selectedText;
-  
+  const truncated = url.length > 50 ? url.substring(0, 50) + '...' : url;
+
   // Clean up the text for use as a title
   return truncated
     .replace(/\s+/g, ' ')
@@ -92,19 +93,19 @@ export function generateId(): string {
 }
 
 export function getThreadSummary(thread: Thread): ThreadSummary {
-  const lastMessage = thread.messages.length > 0 
-    ? thread.messages[thread.messages.length - 1].content.substring(0, 100) + '...'
-    : undefined;
+  const lastMessage =
+    thread.messages.length > 0
+      ? thread.messages[thread.messages.length - 1].content.substring(0, 100) + '...'
+      : undefined;
 
   return {
     id: thread.id,
     title: thread.title,
-    selectedText: thread.selectedText,
     domain: thread.domain,
     messageCount: thread.messages.length,
     createdAt: thread.createdAt,
     updatedAt: thread.updatedAt,
     lastMessage,
-    favorite: thread.favorite
+    favorite: thread.favorite,
   };
-} 
+}

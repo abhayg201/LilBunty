@@ -1,13 +1,14 @@
 import { BrowserStorage } from './browser-storage';
-import { 
-  type Thread, 
-  type ThreadSummary, 
-  type Message, 
-  createThread, 
-  createMessage, 
+import {
+  type Thread,
+  type ThreadSummary,
+  type Message,
+  createThread,
+  createMessage,
   generateId,
-  getThreadSummary
+  getThreadSummary,
 } from '../models/thread';
+import type { ResponseInput, ResponseInputItem } from 'openai/resources/responses/responses.mjs';
 
 export interface ThreadFilters {
   domain?: string;
@@ -32,7 +33,7 @@ export class ThreadService {
   private readonly THREADS_KEY = 'threads';
   private readonly THREAD_INDEX_KEY = 'thread_index';
   private readonly MAX_THREADS = 1000; // Prevent storage bloat
-  
+
   // Singleton pattern for consistent state
   static getInstance(): ThreadService {
     if (!this.instance) {
@@ -42,8 +43,8 @@ export class ThreadService {
   }
 
   // Thread CRUD operations
-  async createThread(selectedText: string, url: string): Promise<Thread> {
-    const thread = createThread(selectedText, url);
+  async createThread(url: string): Promise<Thread> {
+    const thread = createThread(url);
     await this.saveThread(thread);
     return thread;
   }
@@ -61,15 +62,15 @@ export class ThreadService {
   async saveThread(thread: Thread): Promise<void> {
     try {
       thread.updatedAt = Date.now();
-      
+
       // Save the thread
       await this.storage.set({
-        [`${this.THREADS_KEY}_${thread.id}`]: thread
+        [`${this.THREADS_KEY}_${thread.id}`]: thread,
       });
-      
+
       // Update thread index for efficient querying
       await this.updateThreadIndex(thread);
-      
+
       // Cleanup old threads if we exceed the limit
       await this.cleanupOldThreads();
     } catch (error) {
@@ -89,20 +90,32 @@ export class ThreadService {
   }
 
   // Message operations
-  async addMessage(threadId: string, role: 'user' | 'assistant', content: string, metadata?: Message['metadata']): Promise<Message> {
+  async addMessage(
+    threadId: string,
+    role: 'user' | 'assistant',
+    content: string,
+    metadata?: Message['metadata'],
+    context?: Message['context']
+  ): Promise<Message> {
     const thread = await this.getThread(threadId);
     if (!thread) {
       throw new Error('Thread not found');
     }
 
-    const message = createMessage(role, content, metadata);
+    const message = createMessage(role, content, metadata, context);
     thread.messages.push(message);
     await this.saveThread(thread);
-    
+
     return message;
   }
 
-  async updateMessage(threadId: string, messageId: string, content: string): Promise<void> {
+  async updateMessage(
+    threadId: string,
+    messageId: string,
+    content: string,
+    metadata?: Message['metadata'],
+    context?: Message['context']
+  ): Promise<void> {
     const thread = await this.getThread(threadId);
     if (!thread) {
       throw new Error('Thread not found');
@@ -114,6 +127,11 @@ export class ThreadService {
     }
 
     thread.messages[messageIndex].content = content;
+    thread.messages[messageIndex].metadata = metadata;
+    thread.messages[messageIndex].context = {
+      ...thread.messages[messageIndex].context,
+      ...context,
+    };
     await this.saveThread(thread);
   }
 
@@ -151,23 +169,27 @@ export class ThreadService {
     }
   }
 
-  async getThreadSummaries(filters?: ThreadFilters, limit?: number, offset?: number): Promise<ThreadSummary[]> {
+  async getThreadSummaries(
+    filters?: ThreadFilters,
+    limit?: number,
+    offset?: number
+  ): Promise<ThreadSummary[]> {
     try {
       let index = await this.getThreadIndex();
-      
+
       // Apply filters
       if (filters) {
         index = this.applyFilters(index, filters);
       }
-      
+
       // Sort by updated date (newest first)
       index.sort((a, b) => b.updatedAt - a.updatedAt);
-      
+
       // Apply pagination
       if (limit || offset) {
         index = index.slice(offset || 0, (offset || 0) + (limit || 50));
       }
-      
+
       return index;
     } catch (error) {
       console.error('Error getting thread summaries:', error);
@@ -250,12 +272,12 @@ export class ThreadService {
       for (const summary of index) {
         // Count domains
         domainCounts[summary.domain] = (domainCounts[summary.domain] || 0) + 1;
-        
+
         // Count favorites
         if (summary.favorite) {
           favoriteCount++;
         }
-        
+
         // Count messages
         totalMessages += summary.messageCount;
       }
@@ -269,7 +291,7 @@ export class ThreadService {
         totalThreads: index.length,
         totalMessages,
         topDomains,
-        favoriteCount
+        favoriteCount,
       };
     } catch (error) {
       console.error('Error getting thread stats:', error);
@@ -277,7 +299,7 @@ export class ThreadService {
         totalThreads: 0,
         totalMessages: 0,
         topDomains: [],
-        favoriteCount: 0
+        favoriteCount: 0,
       };
     }
   }
@@ -355,7 +377,76 @@ export class ThreadService {
     }
   }
 
+  async prepareThreadForQuery(
+    threadId: string
+  ): Promise<{ userPromptInput: ResponseInputItem[]; previous_response_id: string }> {
+    const thread = await this.getThread(threadId);
+    if (!thread) {
+      throw new Error('Thread not found');
+    }
+    const user_messages = thread.messages.filter(m => m.role === 'user');
+    const assistant_responses = thread.messages.filter(m => m.role === 'assistant');
+    if (assistant_responses.length) {
+      // check if the last response is more than 29 days old
+      const lastResponse = assistant_responses[assistant_responses.length - 1];
+      const lastResponseDate = new Date(lastResponse.timestamp);
+      const currentDate = new Date();
+      const timeDiff = currentDate.getTime() - lastResponseDate.getTime();
+      const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+      let responseInput: ResponseInputItem[] = [];
+      let previous_response_id = '';
+      if (daysDiff < 30) {
+        responseInput = this.prepareMessageForQuery(user_messages[user_messages.length - 1]);
+        previous_response_id = lastResponse.metadata?.response_id;
+      } else {
+        for (const message of user_messages) {
+          responseInput.push(...this.prepareMessageForQuery(message));
+        }
+        previous_response_id = '';
+      }
+      return {
+        userPromptInput: responseInput,
+        previous_response_id,
+      };
+    } else {
+      let responseInput: ResponseInputItem[] = [];
+      for (const message of user_messages) {
+        responseInput.push(...this.prepareMessageForQuery(message));
+      }
+      return {
+        userPromptInput: responseInput,
+        previous_response_id: '',
+      };
+    }
+  }
+
   // Private helper methods
+  private prepareMessageForQuery(message: Message): ResponseInputItem[] {
+    let userPrompt = message.content;
+    // Construct the responseInput
+    const responseInput: ResponseInputItem[] = [
+      {
+        role: 'user',
+        content: userPrompt,
+      },
+    ];
+    for (const key in message.context) {
+      let content = '';
+      switch (key) {
+        case 'selectedText':
+          content = `The user has selected the following text: ${message.context[key]}`;
+          break;
+        default:
+          break;
+      }
+      responseInput.push({
+        role: 'user',
+        content,
+      });
+    }
+    return responseInput;
+  }
+
   private async getThreadIndex(): Promise<ThreadSummary[]> {
     try {
       const result = await this.storage.get(this.THREAD_INDEX_KEY);
@@ -399,27 +490,27 @@ export class ThreadService {
       if (filters.domain && summary.domain !== filters.domain) {
         return false;
       }
-      
+
       if (filters.favorite !== undefined && summary.favorite !== filters.favorite) {
         return false;
       }
-      
+
       if (filters.dateRange) {
         const { start, end } = filters.dateRange;
         if (summary.updatedAt < start || summary.updatedAt > end) {
           return false;
         }
       }
-      
+
       if (filters.search) {
         const searchLower = filters.search.toLowerCase();
-        const searchableText = `${summary.title} ${summary.selectedText} ${summary.lastMessage || ''}`.toLowerCase();
+        const searchableText = `${summary.title} ${summary.lastMessage || ''}`.toLowerCase();
         if (!searchableText.includes(searchLower)) {
           return false;
         }
       }
-      
+
       return true;
     });
   }
-} 
+}

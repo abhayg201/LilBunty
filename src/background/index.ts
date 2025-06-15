@@ -2,6 +2,10 @@ import { count } from '../storage';
 import { OpenAIService } from '../services/openai-service';
 import { ThreadService } from '../services/thread-service';
 import openai, { OpenAI } from 'openai';
+import type { ResponseStreamEvent } from 'openai/resources/responses/responses.mjs';
+
+const SYSTEM_PROMPT =
+  "You are a helpful assistant that works along a human while they are reading a webpage. You are given the context of the webpage and the user's selected text. You are to help the human understand the webpage and the selected text.";
 
 // Background service workers
 // https://developer.chrome.com/docs/extensions/mv3/service_workers/
@@ -31,15 +35,10 @@ async function getApiKey(): Promise<string> {
   });
 }
 
-// NOTE: If you want to toggle the side panel from the extension's action button,
-// you can use the following code:
-// chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })
-//    .catch((error) => console.error(error));
+const threadService = ThreadService.getInstance();
 
-//for normal query and thread operations
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log('Background received message:', message);
-
   if (message.type === 'QUERY_OPENAI') {
     handleOpenAIQuery(message.payload, sendResponse);
     return true; // This keeps the message channel open
@@ -52,8 +51,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 // Handle thread operations
 async function handleThreadOperation(payload: any, sendResponse: (response: any) => void) {
   try {
-    const threadService = ThreadService.getInstance();
-
     switch (payload.operation) {
       case 'GET_THREAD_SUMMARIES':
         const summaries = await threadService.getThreadSummaries(
@@ -71,7 +68,7 @@ async function handleThreadOperation(payload: any, sendResponse: (response: any)
 
       case 'CREATE_THREAD':
         console.log('CREATED A NEW THREAD');
-        const newThread = await threadService.createThread(payload.selectedText, payload.url);
+        const newThread = await threadService.createThread(payload.url);
         sendResponse({ success: true, data: newThread });
         break;
 
@@ -80,7 +77,8 @@ async function handleThreadOperation(payload: any, sendResponse: (response: any)
           payload.threadId,
           payload.role,
           payload.content,
-          payload.metadata
+          payload.metadata,
+          payload.context
         );
         sendResponse({ success: true, data: message });
         break;
@@ -101,48 +99,49 @@ async function handleThreadOperation(payload: any, sendResponse: (response: any)
 
 // Separate async function to handle the API call
 async function handleOpenAIQuery(
-  payload: { systemPrompt: string; userPrompt: string },
-  sendResponse: (response: any) => void
+  payload: { threadId: string },
+  onStream: (chunk: ResponseStreamEvent) => void
 ) {
   try {
     console.log('Processing OpenAI query for prompts:', payload);
+    const { userPromptInput, previous_response_id } = await threadService.prepareThreadForQuery(
+      payload.threadId
+    );
     const apiKey = await getApiKey();
-    const result = await OpenAIService.queryOpenAI({
-      systemPrompt: payload.systemPrompt,
-      userPrompt: payload.userPrompt,
+    const requestObj: any = {
+      systemPrompt: SYSTEM_PROMPT,
+      userPromptInput,
       apiKey,
-    });
+      onStream,
+    };
+    if (previous_response_id) {
+      requestObj['previous_response_id'] = previous_response_id;
+    }
+    const result = await OpenAIService.queryOpenAI(requestObj);
     console.log('OpenAI result:', result);
-    sendResponse({ answer: result });
   } catch (error) {
     console.error('Error in queryOpenAI:', error);
-    sendResponse({ error: error instanceof Error ? error.message : String(error) });
   }
 }
 
-//for setting up a port for streaming chunks of response
+// //for setting up a port for streaming chunks of response
 chrome.runtime.onConnect.addListener(port => {
   port.onMessage.addListener(async message => {
     console.log('Background received messagessssss:', message);
 
+    const onStream = (chunk: ResponseStreamEvent) => {
+      if (chunk.type === 'response.output_text.delta') {
+        port.postMessage({ type: 'STREAM_CHUNK', chunk: chunk.delta });
+      } else if (chunk.type === 'response.completed') {
+        console.log('STREAM_DONE', chunk);
+        port.postMessage({ type: 'STREAM_DONE', response_id: chunk.response.id });
+      }
+    };
+
     if (message.type === 'QUERY_OPENAI_STREAM') {
       try {
-        const { systemPrompt, userPrompt } = message.payload;
-        const apiKey = await getApiKey();
-        let fullResponse = '';
-        console.log('Background received asdfasdf messagessssss:', message, apiKey);
-        await OpenAIService.queryOpenAI({
-          systemPrompt: 'You are a helpful assistant.',
-          userPrompt: 'Please help me understand this text: ' + userPrompt + systemPrompt,
-          apiKey,
-          stream: true,
-          onStream: chunk => {
-            fullResponse += chunk;
-            console.log('Background sending chunk:', chunk);
-            port.postMessage({ type: 'STREAM_CHUNK', chunk });
-          },
-        });
-        port.postMessage({ type: 'STREAM_DONE' });
+        handleOpenAIQuery(message.payload, onStream);
+        // port.postMessage({ type: 'STREAM_DONE' });
       } catch (error) {
         console.log('Background sending error:', error);
         port.postMessage({

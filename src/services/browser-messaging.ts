@@ -5,13 +5,13 @@ export interface BrowserMessagingAPI {
 
 class ChromeMessagingAdapter implements BrowserMessagingAPI {
   async sendMessage(message: any): Promise<any> {
-   console.log("sending message to background")
+    console.log('sending message to background');
     return new Promise((resolve, reject) => {
-      chrome.runtime.sendMessage(message, (response) => {
+      chrome.runtime.sendMessage(message, response => {
         if (chrome.runtime.lastError) {
           reject(new Error(chrome.runtime.lastError.message));
         } else {
-          console.log("received message",response)
+          console.log('received message', response);
           resolve(response);
         }
       });
@@ -54,8 +54,8 @@ export class ThreadMessaging {
         operation: 'GET_THREAD_SUMMARIES',
         filters,
         limit,
-        offset
-      }
+        offset,
+      },
     });
   }
 
@@ -64,24 +64,29 @@ export class ThreadMessaging {
       type: 'THREAD_OPERATION',
       payload: {
         operation: 'GET_THREAD',
-        threadId
-      }
+        threadId,
+      },
     });
   }
 
-  static async createThread(selectedText: string, url: string) {
-   console.log("Creating Thread")
+  static async createThread(url: string) {
+    console.log('Creating Thread');
     return this.messaging.sendMessage({
       type: 'THREAD_OPERATION',
       payload: {
         operation: 'CREATE_THREAD',
-        selectedText,
-        url
-      }
+        url,
+      },
     });
   }
 
-  static async addMessage(threadId: string, role: 'user' | 'assistant', content: string, metadata?: any) {
+  static async addMessage(
+    threadId: string,
+    role: 'user' | 'assistant',
+    content: string,
+    metadata?: any,
+    context?: any
+  ) {
     return this.messaging.sendMessage({
       type: 'THREAD_OPERATION',
       payload: {
@@ -89,8 +94,9 @@ export class ThreadMessaging {
         threadId,
         role,
         content,
-        metadata
-      }
+        metadata,
+        context,
+      },
     });
   }
 
@@ -99,8 +105,8 @@ export class ThreadMessaging {
       type: 'THREAD_OPERATION',
       payload: {
         operation: 'TOGGLE_FAVORITE',
-        threadId
-      }
+        threadId,
+      },
     });
   }
-} 
+}

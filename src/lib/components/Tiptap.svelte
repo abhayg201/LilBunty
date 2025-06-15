@@ -9,10 +9,10 @@
 	import * as DropdownMenu from "$lib/components/ui/dropdown-menu/index.js";
 
 
-	export let content = '';
-	export let placeholder = 'Ask anything';
-	export let disabled = false;
-	export let minHeight = '80px';
+  export let content = '';
+  export let placeholder = 'Ask anything';
+  export let disabled = false;
+  export let minHeight = '80px';
 
 	let element: HTMLDivElement;
 	let editor: Editor | null = null;
@@ -58,224 +58,225 @@
 		// Future commands can be added here
 	];
 
-	let suggestionElement: HTMLDivElement | null = null;
 
-	onMount(() => {
-		editor = new Editor({
-			element: element,
-			extensions: [
-				StarterKit,
-				Placeholder.configure({
-					placeholder: placeholder,
-				}),
-				Mention.configure({
-					HTMLAttributes: {
-						class: 'mention',
-					},
-					suggestion: {
-						items: ({ query }) => {
-							return commands
-								.filter(item => 
-									item.label.toLowerCase().startsWith(query.toLowerCase())
-								)
-								.slice(0, 5);
-						},
-						render: () => {
-							let component: any;
 
-							return {
-								onStart: (props: any) => {
-									component = createSuggestionList(props);
-								},
+  let suggestionElement: HTMLDivElement | null = null;
 
-								onUpdate(props: any) {
-									component?.updateProps(props);
-								},
+  onMount(() => {
+    editor = new Editor({
+      element: element,
+      extensions: [
+        StarterKit,
+        Placeholder.configure({
+          placeholder: placeholder,
+        }),
+        Mention.configure({
+          HTMLAttributes: {
+            class: 'mention',
+          },
+          suggestion: {
+            items: ({ query }) => {
+              return commands
+                .filter(item => item.label.toLowerCase().startsWith(query.toLowerCase()))
+                .slice(0, 5);
+            },
+            render: () => {
+              let component: any;
 
-								onKeyDown(props: any) {
-									if (props.event.key === 'Escape') {
-										component?.destroy();
-										return true;
-									}
+              return {
+                onStart: (props: any) => {
+                  component = createSuggestionList(props);
+                },
 
-									return component?.onKeyDown(props);
-								},
+                onUpdate(props: any) {
+                  component?.updateProps(props);
+                },
 
-								onExit() {
-									component?.destroy();
-								},
-							};
-						},
-					},
-				}),
-			],
-			content: content,
-			editable: !disabled,
-			onTransaction: () => {
-				// force re-render so `editor.isActive` works as expected
-				if (editor) {
-					editor = editor;
-				}
-			},
-			onUpdate: ({ editor }) => {
-				content = editor.getHTML();
-				dispatch('update', { content });
-			},
-		});
+                onKeyDown(props: any) {
+                  if (props.event.key === 'Escape') {
+                    component?.destroy();
+                    return true;
+                  }
 
-		// Auto-focus the editor
-		setTimeout(() => {
-			if (editor) {
-				editor.commands.focus();
-			}
-		}, 100);
-	});
+                  return component?.onKeyDown(props);
+                },
 
-	function createSuggestionList(props: any) {
-		let selectedIndex = 0;
-		let commandItems = props.items;
+                onExit() {
+                  component?.destroy();
+                },
+              };
+            },
+          },
+        }),
+      ],
+      content: content,
+      editable: !disabled,
+      onTransaction: () => {
+        // force re-render so `editor.isActive` works as expected
+        if (editor) {
+          editor = editor;
+        }
+      },
+      onUpdate: ({ editor }) => {
+        content = editor.getHTML();
+        dispatch('update', { content });
+      },
+    });
 
-		const selectItem = (index: number) => {
-			const item = commandItems[index];
-			if (item && item.action) {
-				const contextText = item.action();
-				// Insert the command result
-				props.command({ id: item.id, label: contextText });
-			}
-		};
+    // Auto-focus the editor
+    setTimeout(() => {
+      if (editor) {
+        editor.commands.focus();
+      }
+    }, 100);
+  });
 
-		const updateListItem = (index: number) => {
-			selectedIndex = index;
-			renderList();
-		};
+  function createSuggestionList(props: any) {
+    let selectedIndex = 0;
+    let commandItems = props.items;
 
-		const renderList = () => {
-			if (!suggestionElement) {
-				suggestionElement = document.createElement('div');
-				suggestionElement.className = 'suggestion-list';
-				
-				// Try to append to suggestion container first, fallback to shadow root or document body
-				const targetContainer = suggestionContainer || 
-					element?.getRootNode() || 
-					document.body;
-				
-				targetContainer.appendChild(suggestionElement);
-			}
+    const selectItem = (index: number) => {
+      const item = commandItems[index];
+      if (item && item.action) {
+        const contextText = item.action();
+        // Insert the command result
+        props.command({ id: item.id, label: contextText });
+      }
+    };
 
-			suggestionElement.innerHTML = commandItems
-				.map((item: any, index: number) => `
+    const updateListItem = (index: number) => {
+      selectedIndex = index;
+      renderList();
+    };
+
+    const renderList = () => {
+      if (!suggestionElement) {
+        suggestionElement = document.createElement('div');
+        suggestionElement.className = 'suggestion-list';
+
+        // Try to append to suggestion container first, fallback to shadow root or document body
+        const targetContainer = suggestionContainer || element?.getRootNode() || document.body;
+
+        targetContainer.appendChild(suggestionElement);
+      }
+
+      suggestionElement.innerHTML = commandItems
+        .map(
+          (item: any, index: number) => `
 					<div class="suggestion-item ${index === selectedIndex ? 'selected' : ''}" 
 						 data-index="${index}">
 						<div class="suggestion-label">${item.label}</div>
 						<div class="suggestion-description">${item.description}</div>
 					</div>
-				`).join('');
+				`
+        )
+        .join('');
 
-			// Add click handlers
-			suggestionElement.querySelectorAll('.suggestion-item').forEach((el, index) => {
-				el.addEventListener('click', () => selectItem(index));
-			});
+      // Add click handlers
+      suggestionElement.querySelectorAll('.suggestion-item').forEach((el, index) => {
+        el.addEventListener('click', () => selectItem(index));
+      });
 
-			// Position the list
-			if (props.clientRect) {
-				const rect = props.clientRect();
-				const editorRect = element.getBoundingClientRect();
-				
-				suggestionElement.style.position = 'fixed';
-				suggestionElement.style.top = `${rect.bottom + 5}px`;
-				suggestionElement.style.left = `${rect.left}px`;
-				suggestionElement.style.display = 'block';
-				suggestionElement.style.zIndex = '2147483647';
-			}
-		};
+      // Position the list
+      if (props.clientRect) {
+        const rect = props.clientRect();
+        const editorRect = element.getBoundingClientRect();
 
-		renderList();
+        suggestionElement.style.position = 'fixed';
+        suggestionElement.style.top = `${rect.bottom + 5}px`;
+        suggestionElement.style.left = `${rect.left}px`;
+        suggestionElement.style.display = 'block';
+        suggestionElement.style.zIndex = '2147483647';
+      }
+    };
 
-		return {
-			onKeyDown: ({ event }: { event: KeyboardEvent }) => {
-				if (event.key === 'ArrowUp') {
-					updateListItem((selectedIndex + commandItems.length - 1) % commandItems.length);
-					return true;
-				}
+    renderList();
 
-				if (event.key === 'ArrowDown') {
-					updateListItem((selectedIndex + 1) % commandItems.length);
-					return true;
-				}
+    return {
+      onKeyDown: ({ event }: { event: KeyboardEvent }) => {
+        if (event.key === 'ArrowUp') {
+          updateListItem((selectedIndex + commandItems.length - 1) % commandItems.length);
+          return true;
+        }
 
-				if (event.key === 'Enter') {
-					selectItem(selectedIndex);
-					return true;
-				}
+        if (event.key === 'ArrowDown') {
+          updateListItem((selectedIndex + 1) % commandItems.length);
+          return true;
+        }
 
-				return false;
-			},
+        if (event.key === 'Enter') {
+          selectItem(selectedIndex);
+          return true;
+        }
 
-			updateProps: (newProps: any) => {
-				props = newProps;
-				commandItems = props.items;
-				selectedIndex = 0;
-				renderList();
-			},
+        return false;
+      },
 
-			destroy: () => {
-				if (suggestionElement) {
-					suggestionElement.remove();
-					suggestionElement = null;
-				}
-			},
-		};
-	}
+      updateProps: (newProps: any) => {
+        props = newProps;
+        commandItems = props.items;
+        selectedIndex = 0;
+        renderList();
+      },
 
-	onDestroy(() => {
-		if (editor) {
-			editor.destroy();
-		}
-		if (suggestionElement) {
-			suggestionElement.remove();
-		}
-	});
+      destroy: () => {
+        if (suggestionElement) {
+          suggestionElement.remove();
+          suggestionElement = null;
+        }
+      },
+    };
+  }
 
-	// Export functions for parent component
-	export function getContent(): string {
-		return editor ? editor.getHTML() : '';
-	}
+  onDestroy(() => {
+    if (editor) {
+      editor.destroy();
+    }
+    if (suggestionElement) {
+      suggestionElement.remove();
+    }
+  });
 
-	export function getText(): string {
-		return editor ? editor.getText() : '';
-	}
+  // Export functions for parent component
+  export function getContent(): string {
+    return editor ? editor.getHTML() : '';
+  }
 
-	export function setContent(newContent: string): void {
-		if (editor) {
-			editor.commands.setContent(newContent);
-		}
-	}
+  export function getText(): string {
+    return editor ? editor.getText() : '';
+  }
 
-	export function clear(): void {
-		if (editor) {
-			editor.commands.clearContent();
-		}
-	}
+  export function setContent(newContent: string): void {
+    if (editor) {
+      editor.commands.setContent(newContent);
+    }
+  }
 
-	export function focus(): void {
-		if (editor) {
-			editor.commands.focus();
-		}
-	}
+  export function clear(): void {
+    if (editor) {
+      editor.commands.clearContent();
+    }
+  }
 
-	function handleSend() {
-		const text = getText().trim();
-		if (text) {
-			dispatch('send', { content: text, model: selectedModel });
-		}
-	}
+  export function focus(): void {
+    if (editor) {
+      editor.commands.focus();
+    }
+  }
 
-	function handleKeydown(event: KeyboardEvent) {
-		if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
-			event.preventDefault();
-			handleSend();
-		}
-	}
+  function handleSend() {
+    const text = getText().trim();
+    if (text) {
+      dispatch('send', { content: text, model: selectedModel });
+    }
+  }
+  
+  function handleKeydown(event: KeyboardEvent) {
+    if (event.key === 'Enter' && !(event.metaKey || event.ctrlKey)) {
+      event.preventDefault();
+      handleSend();
+    }
+  }
 
 	// Update editor when disabled prop changes
 	$: if (editor) {
@@ -392,6 +393,6 @@
 </div>
 
 <style>
-	/* Styles are now loaded via shadow-styles.css in the content script */
-	/* This ensures proper styling in the Shadow DOM environment */
+  /* Styles are now loaded via shadow-styles.css in the content script */
+  /* This ensures proper styling in the Shadow DOM environment */
 </style>
