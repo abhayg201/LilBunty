@@ -8,11 +8,10 @@
 	import { get } from 'svelte/store';
 	import * as DropdownMenu from "$lib/components/ui/dropdown-menu/index.js";
 
-
-  export let content = '';
-  export let placeholder = 'Ask anything';
-  export let disabled = false;
-  export let minHeight = '80px';
+	export let content = '';
+	export let placeholder = 'Ask anything';
+	export let disabled = false;
+	export let minHeight = '80px';
 
 	let element: HTMLDivElement;
 	let editor: Editor | null = null;
@@ -36,10 +35,10 @@
 	];
 
 	// Filter models based on search query
-	$: filteredModels = models.filter(model =>
-		model.label.toLowerCase().includes(modelSearchQuery.toLowerCase()) ||
-		model.value.toLowerCase().includes(modelSearchQuery.toLowerCase())
-	);
+	$: filteredModels = models.filter(model => {
+		return model.label.toLowerCase().includes(modelSearchQuery.toLowerCase()) ||
+			model.value.toLowerCase().includes(modelSearchQuery.toLowerCase());
+	});
 
 	// Get selected model label for display
 	$: selectedModelLabel = models.find(m => m.value === selectedModel)?.label || selectedModel;
@@ -58,225 +57,223 @@
 		// Future commands can be added here
 	];
 
+	let suggestionElement: HTMLDivElement | null = null;
 
+	onMount(() => {
+		editor = new Editor({
+			element: element,
+			extensions: [
+				StarterKit,
+				Placeholder.configure({
+					placeholder: placeholder,
+				}),
+				Mention.configure({
+					HTMLAttributes: {
+						class: 'mention',
+					},
+					suggestion: {
+						items: ({ query }) => {
+							return commands
+								.filter(item => item.label.toLowerCase().startsWith(query.toLowerCase()))
+								.slice(0, 5);
+						},
+						render: () => {
+							let component: any;
 
-  let suggestionElement: HTMLDivElement | null = null;
+							return {
+								onStart: (props: any) => {
+									component = createSuggestionList(props);
+								},
 
-  onMount(() => {
-    editor = new Editor({
-      element: element,
-      extensions: [
-        StarterKit,
-        Placeholder.configure({
-          placeholder: placeholder,
-        }),
-        Mention.configure({
-          HTMLAttributes: {
-            class: 'mention',
-          },
-          suggestion: {
-            items: ({ query }) => {
-              return commands
-                .filter(item => item.label.toLowerCase().startsWith(query.toLowerCase()))
-                .slice(0, 5);
-            },
-            render: () => {
-              let component: any;
+								onUpdate(props: any) {
+									component?.updateProps(props);
+								},
 
-              return {
-                onStart: (props: any) => {
-                  component = createSuggestionList(props);
-                },
+								onKeyDown(props: any) {
+									if (props.event.key === 'Escape') {
+										component?.destroy();
+										return true;
+									}
 
-                onUpdate(props: any) {
-                  component?.updateProps(props);
-                },
+									return component?.onKeyDown(props);
+								},
 
-                onKeyDown(props: any) {
-                  if (props.event.key === 'Escape') {
-                    component?.destroy();
-                    return true;
-                  }
+								onExit() {
+									component?.destroy();
+								},
+							};
+						},
+					},
+				}),
+			],
+			content: content,
+			editable: !disabled,
+			onTransaction: () => {
+				// force re-render so `editor.isActive` works as expected
+				if (editor) {
+					editor = editor;
+				}
+			},
+			onUpdate: ({ editor }) => {
+				content = editor.getHTML();
+				dispatch('update', { content });
+			},
+		});
 
-                  return component?.onKeyDown(props);
-                },
+		// Auto-focus the editor
+		setTimeout(() => {
+			if (editor) {
+				editor.commands.focus();
+			}
+		}, 100);
+	});
 
-                onExit() {
-                  component?.destroy();
-                },
-              };
-            },
-          },
-        }),
-      ],
-      content: content,
-      editable: !disabled,
-      onTransaction: () => {
-        // force re-render so `editor.isActive` works as expected
-        if (editor) {
-          editor = editor;
-        }
-      },
-      onUpdate: ({ editor }) => {
-        content = editor.getHTML();
-        dispatch('update', { content });
-      },
-    });
+	function createSuggestionList(props: any) {
+		let selectedIndex = 0;
+		let commandItems = props.items;
 
-    // Auto-focus the editor
-    setTimeout(() => {
-      if (editor) {
-        editor.commands.focus();
-      }
-    }, 100);
-  });
+		const selectItem = (index: number) => {
+			const item = commandItems[index];
+			if (item && item.action) {
+				const contextText = item.action();
+				// Insert the command result
+				props.command({ id: item.id, label: contextText });
+			}
+		};
 
-  function createSuggestionList(props: any) {
-    let selectedIndex = 0;
-    let commandItems = props.items;
+		const updateListItem = (index: number) => {
+			selectedIndex = index;
+			renderList();
+		};
 
-    const selectItem = (index: number) => {
-      const item = commandItems[index];
-      if (item && item.action) {
-        const contextText = item.action();
-        // Insert the command result
-        props.command({ id: item.id, label: contextText });
-      }
-    };
+		const renderList = () => {
+			if (!suggestionElement) {
+				suggestionElement = document.createElement('div');
+				suggestionElement.className = 'suggestion-list';
 
-    const updateListItem = (index: number) => {
-      selectedIndex = index;
-      renderList();
-    };
+				// Try to append to suggestion container first, fallback to shadow root or document body
+				const targetContainer = suggestionContainer || element?.getRootNode() || document.body;
 
-    const renderList = () => {
-      if (!suggestionElement) {
-        suggestionElement = document.createElement('div');
-        suggestionElement.className = 'suggestion-list';
+				targetContainer.appendChild(suggestionElement);
+			}
 
-        // Try to append to suggestion container first, fallback to shadow root or document body
-        const targetContainer = suggestionContainer || element?.getRootNode() || document.body;
-
-        targetContainer.appendChild(suggestionElement);
-      }
-
-      suggestionElement.innerHTML = commandItems
-        .map(
-          (item: any, index: number) => `
+			suggestionElement.innerHTML = commandItems
+				.map(
+					(item: any, index: number) => `
 					<div class="suggestion-item ${index === selectedIndex ? 'selected' : ''}" 
 						 data-index="${index}">
 						<div class="suggestion-label">${item.label}</div>
 						<div class="suggestion-description">${item.description}</div>
 					</div>
 				`
-        )
-        .join('');
+				)
+				.join('');
 
-      // Add click handlers
-      suggestionElement.querySelectorAll('.suggestion-item').forEach((el, index) => {
-        el.addEventListener('click', () => selectItem(index));
-      });
+			// Add click handlers
+			suggestionElement.querySelectorAll('.suggestion-item').forEach((el, index) => {
+				el.addEventListener('click', () => selectItem(index));
+			});
 
-      // Position the list
-      if (props.clientRect) {
-        const rect = props.clientRect();
-        const editorRect = element.getBoundingClientRect();
+			// Position the list
+			if (props.clientRect) {
+				const rect = props.clientRect();
+				const editorRect = element.getBoundingClientRect();
 
-        suggestionElement.style.position = 'fixed';
-        suggestionElement.style.top = `${rect.bottom + 5}px`;
-        suggestionElement.style.left = `${rect.left}px`;
-        suggestionElement.style.display = 'block';
-        suggestionElement.style.zIndex = '2147483647';
-      }
-    };
+				suggestionElement.style.position = 'fixed';
+				suggestionElement.style.top = `${rect.bottom + 5}px`;
+				suggestionElement.style.left = `${rect.left}px`;
+				suggestionElement.style.display = 'block';
+				suggestionElement.style.zIndex = '2147483647';
+			}
+		};
 
-    renderList();
+		renderList();
 
-    return {
-      onKeyDown: ({ event }: { event: KeyboardEvent }) => {
-        if (event.key === 'ArrowUp') {
-          updateListItem((selectedIndex + commandItems.length - 1) % commandItems.length);
-          return true;
-        }
+		return {
+			onKeyDown: ({ event }: { event: KeyboardEvent }) => {
+				if (event.key === 'ArrowUp') {
+					updateListItem((selectedIndex + commandItems.length - 1) % commandItems.length);
+					return true;
+				}
 
-        if (event.key === 'ArrowDown') {
-          updateListItem((selectedIndex + 1) % commandItems.length);
-          return true;
-        }
+				if (event.key === 'ArrowDown') {
+					updateListItem((selectedIndex + 1) % commandItems.length);
+					return true;
+				}
 
-        if (event.key === 'Enter') {
-          selectItem(selectedIndex);
-          return true;
-        }
+				if (event.key === 'Enter') {
+					selectItem(selectedIndex);
+					return true;
+				}
 
-        return false;
-      },
+				return false;
+			},
 
-      updateProps: (newProps: any) => {
-        props = newProps;
-        commandItems = props.items;
-        selectedIndex = 0;
-        renderList();
-      },
+			updateProps: (newProps: any) => {
+				props = newProps;
+				commandItems = props.items;
+				selectedIndex = 0;
+				renderList();
+			},
 
-      destroy: () => {
-        if (suggestionElement) {
-          suggestionElement.remove();
-          suggestionElement = null;
-        }
-      },
-    };
-  }
+			destroy: () => {
+				if (suggestionElement) {
+					suggestionElement.remove();
+					suggestionElement = null;
+				}
+			},
+		};
+	}
 
-  onDestroy(() => {
-    if (editor) {
-      editor.destroy();
-    }
-    if (suggestionElement) {
-      suggestionElement.remove();
-    }
-  });
+	onDestroy(() => {
+		if (editor) {
+			editor.destroy();
+		}
+		if (suggestionElement) {
+			suggestionElement.remove();
+		}
+	});
 
-  // Export functions for parent component
-  export function getContent(): string {
-    return editor ? editor.getHTML() : '';
-  }
+	// Export functions for parent component
+	export function getContent(): string {
+		return editor ? editor.getHTML() : '';
+	}
 
-  export function getText(): string {
-    return editor ? editor.getText() : '';
-  }
+	export function getText(): string {
+		return editor ? editor.getText() : '';
+	}
 
-  export function setContent(newContent: string): void {
-    if (editor) {
-      editor.commands.setContent(newContent);
-    }
-  }
+	export function setContent(newContent: string): void {
+		if (editor) {
+			editor.commands.setContent(newContent);
+		}
+	}
 
-  export function clear(): void {
-    if (editor) {
-      editor.commands.clearContent();
-    }
-  }
+	export function clear(): void {
+		if (editor) {
+			editor.commands.clearContent();
+		}
+	}
 
-  export function focus(): void {
-    if (editor) {
-      editor.commands.focus();
-    }
-  }
+	export function focus(): void {
+		if (editor) {
+			editor.commands.focus();
+		}
+	}
 
-  function handleSend() {
-    const text = getText().trim();
-    if (text) {
-      dispatch('send', { content: text, model: selectedModel });
-    }
-  }
-  
-  function handleKeydown(event: KeyboardEvent) {
-    if (event.key === 'Enter' && !(event.metaKey || event.ctrlKey)) {
-      event.preventDefault();
-      handleSend();
-    }
-  }
+	function handleSend() {
+		const text = getText().trim();
+		if (text) {
+			dispatch('send', { content: text, model: selectedModel });
+		}
+	}
+	
+	function handleKeydown(event: KeyboardEvent) {
+		if (event.key === 'Enter' && !(event.metaKey || event.ctrlKey)) {
+			event.preventDefault();
+			handleSend();
+		}
+	}
 
 	// Update editor when disabled prop changes
 	$: if (editor) {
@@ -334,11 +331,18 @@
 		<div class="editor-controls">
 			<!-- Model Selector Dropdown -->
 			<DropdownMenu.Root bind:open={isModelDropdownOpen}>
-				<DropdownMenu.Trigger class="model-selector-trigger">
-					<span class="model-label">{selectedModelLabel}</span>
-					<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="chevron-icon">
-						<path d="M6 9l6 6 6-6"/>
-					</svg>
+				<DropdownMenu.Trigger asChild let:builder>
+					<button 
+						class="model-selector-trigger" 
+						type="button"
+						use:builder.action
+						{...builder}
+					>
+						<span class="model-label">{selectedModelLabel}</span>
+						<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="chevron-icon">
+							<path d="M6 9l6 6 6-6"/>
+						</svg>
+					</button>
 				</DropdownMenu.Trigger>
 				<DropdownMenu.Content class="model-dropdown-content" align="end">
 					<div class="model-search-container">
@@ -354,14 +358,19 @@
 					{#each filteredModels as model}
 						<DropdownMenu.Item 
 							class="model-item {selectedModel === model.value ? 'selected' : ''}"
-							on:click={() => selectModel(model.value)}
 						>
-							<span class="model-name">{model.label}</span>
-							{#if selectedModel === model.value}
-								<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="check-icon">
-									<path d="M20 6L9 17l-5-5"/>
-								</svg>
-							{/if}
+							<button 
+								type="button"
+								class="model-item-button"
+								on:click={() => selectModel(model.value)}
+							>
+								<span class="model-name">{model.label}</span>
+								{#if selectedModel === model.value}
+									<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="check-icon">
+										<path d="M20 6L9 17l-5-5"/>
+									</svg>
+								{/if}
+							</button>
 						</DropdownMenu.Item>
 					{/each}
 					{#if filteredModels.length === 0}
@@ -373,6 +382,7 @@
 			</DropdownMenu.Root>
 
 			<!-- Send Button -->
+			<!-- svelte-ignore a11y_consider_explicit_label -->
 			<button 
 				type="button"
 				class="send-button" 

@@ -445,9 +445,6 @@
 
             {#if loading}
               <div class="message-item flex gap-3 animate-fade-in-up">
-                <Avatar class="h-8 w-8 shrink-0 mr-2 transition-transform hover:scale-105">
-                  <AvatarFallback class="bg-accent text-accent-foreground">AI</AvatarFallback>
-                </Avatar>
 
                 <div class="message-content-wrapper flex-1 min-w-0">
                   <div class="flex items-center gap-2 mb-2">
