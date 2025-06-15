@@ -653,7 +653,7 @@
     background: hsl(var(--border, 214 214 214)) !important;
     margin: 4px 0 !important;
 }
-}
+
 
 /* Thread-specific animations and fine-grained styles */
 @keyframes fadeInUp {
