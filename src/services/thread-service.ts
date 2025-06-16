@@ -397,7 +397,7 @@ export class ThreadService {
       let previous_response_id = '';
       if (daysDiff < 30) {
         responseInput = this.prepareMessageForQuery(user_messages[user_messages.length - 1]);
-        previous_response_id = lastResponse.metadata?.response_id;
+        previous_response_id = lastResponse.metadata?.response_id || '';
       } else {
         for (const message of user_messages) {
           responseInput.push(...this.prepareMessageForQuery(message));

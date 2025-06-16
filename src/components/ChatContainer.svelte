@@ -85,27 +85,31 @@
         { domain: extractDomain(currentUrl) },
         10
       );
+      // CHange the logic below to show the latest thread, do not create a new thread if some thread already exists
+      // Sort the summaries by updatedAt in descending order
 
       if (summariesResponse.success) {
-        // Look for a thread with the same selected text
-        const existingThread = summariesResponse.data.find(
-          (summary: any) => summary.selectedText === $selectedText
+        const sortedSummaries = summariesResponse.data.sort(
+          (a: any, b: any) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
         );
 
-        if (existingThread) {
+        // Get the latest thread
+        const latestThread = sortedSummaries[0];
+        // Look for a thread with the same selected text
+
+        if (latestThread) {
           // Load the existing thread
-          const threadResponse = await ThreadMessaging.getThread(existingThread.id);
+          const threadResponse = await ThreadMessaging.getThread(latestThread.id);
           if (threadResponse.success && threadResponse.data) {
             currentThread.set(threadResponse.data);
             return;
           }
+        } else {
+          const response = await ThreadMessaging.createThread(currentUrl);
+          if (response.success) {
+            currentThread.set(response.data);
+          }
         }
-      }
-
-      // Create a new thread if no existing one found
-      const response = await ThreadMessaging.createThread(currentUrl);
-      if (response.success) {
-        currentThread.set(response.data);
       }
     } catch (error) {
       console.error('Error initializing thread:', error);
@@ -299,12 +303,15 @@
       }, 0);
     } else if (msg.type === 'STREAM_DONE') {
       loading = false;
+      console.log('STREAM_DONE', msg);
       port.disconnect();
 
       // Save assistant response to thread
       if (response && $currentThread) {
         try {
-          await ThreadMessaging.addMessage($currentThread.id, 'assistant', response);
+          await ThreadMessaging.addMessage($currentThread.id, 'assistant', response, {
+            response_id: msg.response_id,
+          });
           // Refresh current thread data and thread list
           const threadResponse = await ThreadMessaging.getThread($currentThread.id);
           if (threadResponse.success && threadResponse.data) {
