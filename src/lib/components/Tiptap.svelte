@@ -24,6 +24,19 @@
 	// Dynamic context items
 	let contextItems: Array<{id: string, label: string, content: string}> = [];
 	
+	// Reactive position tracking for suggestion dropdown
+	let suggestionRect: { bottom: number; left: number } | null = null;
+	let suggestionElement: HTMLDivElement | null = null;
+
+	// Reactive statement to update suggestion position
+	$: if (suggestionElement && suggestionRect) {
+		suggestionElement.style.position = 'fixed';
+		suggestionElement.style.top = `${suggestionRect.bottom + 8}px`;
+		suggestionElement.style.left = `${suggestionRect.left}px`;
+		suggestionElement.style.display = 'block';
+		suggestionElement.style.zIndex = '214748364712';
+	}
+
 	const dispatch = createEventDispatcher<{
 		update: { content: string };
 		send: { content: string; model: string };
@@ -84,8 +97,6 @@
 		// Future commands can be added here
 	];
 
-	let suggestionElement: HTMLDivElement | null = null;
-
 	function addContextItem(label: string, content: string) {
 		const id = `context-${Date.now()}`;
 		contextItems = [...contextItems, { id, label, content }];
@@ -134,6 +145,13 @@
 
 								onUpdate(props: any) {
 									component?.updateProps(props);
+									if (props.clientRect) {
+										const rect = props.clientRect();
+										suggestionRect = {
+											bottom: rect.bottom,
+											left: rect.left
+										};
+									}
 								},
 
 								onKeyDown(props: any) {
@@ -230,17 +248,7 @@
 				el.addEventListener('click', () => selectItem(index));
 			});
 
-			// Position the list
-			if (props.clientRect) {
-				const rect = props.clientRect();
-				const editorRect = element.getBoundingClientRect();
-
-				suggestionElement.style.position = 'fixed';
-				suggestionElement.style.top = `${rect.bottom + 8}px`;
-				suggestionElement.style.left = `${rect.left}px`;
-				suggestionElement.style.display = 'block';
-				suggestionElement.style.zIndex = '2147483647';
-			}
+			// Update reactive position data instead of setting styles directly
 		};
 
 		renderList();
@@ -277,6 +285,7 @@
 					suggestionElement.remove();
 					suggestionElement = null;
 				}
+				suggestionRect = null;
 			},
 		};
 	}
@@ -288,6 +297,7 @@
 		if (suggestionElement) {
 			suggestionElement.remove();
 		}
+		suggestionRect = null;
 	});
 
 	// Export functions for parent component

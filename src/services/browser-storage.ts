@@ -14,7 +14,7 @@ class ChromeStorageAdapter implements BrowserStorageAPI {
 
   async get(keys: string | string[] | null): Promise<{ [key: string]: any }> {
     return new Promise((resolve, reject) => {
-      this.storage.get(keys, (result) => {
+      this.storage.get(keys, result => {
         if (chrome.runtime.lastError) {
           reject(new Error(chrome.runtime.lastError.message));
         } else {
@@ -67,7 +67,7 @@ class ChromeStorageAdapter implements BrowserStorageAPI {
       },
       removeListener: (callback: (changes: { [key: string]: any }) => void) => {
         this.storage.onChanged.removeListener(callback);
-      }
+      },
     };
   }
 }
@@ -80,7 +80,7 @@ export class BrowserStorage {
   static getLocal(): BrowserStorageAPI {
     if (!this.localAdapter) {
       if (typeof chrome !== 'undefined' && chrome.storage) {
-        this.localAdapter = new ChromeStorageAdapter(chrome.storage.local);
+        this.localAdapter = new ChromeStorageAdapter(chrome.storage.session);
       } else {
         throw new Error('Browser storage not available');
       }
@@ -102,4 +102,4 @@ export class BrowserStorage {
   // In the future, add support for other browsers:
   // static setFirefoxAdapter(adapter: BrowserStorageAPI) { ... }
   // static setSafariAdapter(adapter: BrowserStorageAPI) { ... }
-} 
+}

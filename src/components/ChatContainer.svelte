@@ -10,6 +10,7 @@
   import { Button } from '$lib/components/ui/button';
   import { Separator } from '$lib/components/ui/separator';
   import { Avatar, AvatarFallback } from '$lib/components/ui/avatar';
+  import { Loader2 , Plus} from 'lucide-svelte';
   import { Badge } from '$lib/components/ui/badge';
   import {
     chatContainerVisible,
@@ -39,6 +40,7 @@
   let shadowRoot: ShadowRoot | null = null;
   let chatOverlay: HTMLDivElement | null = null;
   let dragOffset = { x: 0, y: 0 };
+
   let dragging = false;
   let tiptapEditor: Tiptap | undefined;
 
@@ -65,7 +67,6 @@
       chatOverlay.addEventListener('position-update', e => {
         const { x, y } = (e as CustomEvent<{ x: number; y: number }>).detail;
         overlayPosition.set({ x, y });
-        console.log('position-update', x, y);
       });
     }
 
@@ -157,6 +158,31 @@
     }
   }
 
+  async function createNewThread() {
+    isLoadingThread.set(true);
+    try {
+      const currentUrl = window.location.href;
+      const threadResponse = await ThreadMessaging.createThread(currentUrl);
+      if (threadResponse.success) {
+        // Set the new thread as current
+        currentThread.set(threadResponse.data);
+        
+        // Clear any current response and editor
+        response = '';
+        if (tiptapEditor) {
+          tiptapEditor.clear();
+        }
+        
+        // Refresh thread list to show the new thread
+        await loadThreadHistory();
+      }
+    } catch (error) {
+      console.error('Error creating new thread:', error);
+    } finally {
+      isLoadingThread.set(false);
+    }
+  }
+
   async function toggleThreadFavorite(threadId: string) {
     try {
       await ThreadMessaging.toggleFavorite(threadId);
@@ -187,13 +213,15 @@
         x: event.clientX - hostRect.left,
         y: event.clientY - hostRect.top,
       };
+      console.log('onDragStart onupdate', event.clientX, event.clientY, hostRect.left, hostRect.top);
     }
 
     // Dispatch start event to content script
     const dragStartEvent = new CustomEvent('drag-start', {
       detail: {
         offset: dragOffset,
-        initialPos: { x: 0, y: 0 }, // shadowHost handles actual position
+        initialPos: { x: 0, y: 0 },
+        clientPostion: { x: event.clientX, y: event.clientY }, // shadowHost handles actual position
       },
     });
     document.dispatchEvent(dragStartEvent);
@@ -379,8 +407,30 @@
             </Button>
           </div>
         </div>
-        <CardDescription>Chat about your selected text</CardDescription>
-      </CardHeader>
+      <div class="flex flex-start justify-start mb-4">
+        <Button
+                variant="ghost"
+                size="sm"
+                on:click={createNewThread}
+                disabled={$isLoadingThread}
+                class="text-xs h-7"
+              >
+                {#if $isLoadingThread}
+                  <Loader2 class="h-3 w-3 animate-spin" />
+                {:else}
+                  <Plus class="h-3 w-3" />
+                {/if}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                on:click={() => showThreadHistory.set(!$showThreadHistory)}
+                class="text-xs h-7"
+              >
+                {$showThreadHistory ? 'Hide' : 'Show'} History
+              </Button>
+      </div>
+    </CardHeader>
 
       <!-- Conversation History -->
       {#if messages.length > 0 || loading}
@@ -394,14 +444,7 @@
               <Badge variant="secondary" class="text-xs">
                 {messages.length + (loading ? 1 : 0)} messages
               </Badge>
-              <Button
-                variant="ghost"
-                size="sm"
-                on:click={() => showThreadHistory.set(!$showThreadHistory)}
-                class="text-xs h-7"
-              >
-                {$showThreadHistory ? 'Hide' : 'Show'} History
-              </Button>
+              
             </div>
           </div>
 
