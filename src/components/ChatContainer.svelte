@@ -374,7 +374,7 @@
                 <circle cx="10" cy="14" r="1.5" fill="#bbb" />
               </svg>
             </div>
-            <Button variant="ghost" size="icon" on:click={handleClose} class="h-8 w-8">
+            <Button variant="ghost" size="icon" onclick={handleClose} class="h-8 w-8">
               <span class="text-lg">×</span>
             </Button>
           </div>
