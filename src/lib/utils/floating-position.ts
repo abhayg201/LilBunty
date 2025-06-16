@@ -197,11 +197,29 @@ export function createScrollAwarePersistentVirtualElement(initialPos?: { x: numb
   };
 }
 
+export function createFixedVirtualElement(pos: { x: number; y: number }): VirtualElement {
+  return {
+    getBoundingClientRect() {
+      return {
+        width: 0,
+        height: 0,
+        top: pos.y,
+        left: pos.x,
+        right: pos.x,
+        bottom: pos.y,
+        x: pos.x,
+        y: pos.y,
+      } as DOMRect;
+    },
+    contextElement: document.body,
+  };
+}
+
 export function setupFloatingPosition(
   referenceElement: VirtualElement,
   floatingElement: HTMLElement,
   config: PositionConfig = {},
-  onUpdate?: (x: number, y: number) => void
+  onUpdate?: (x: number|undefined, y: number|undefined) => void
 ): () => void {
   const {
     placement = 'right-start',

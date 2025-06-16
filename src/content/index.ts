@@ -5,7 +5,9 @@ import appStylesText from '../app.css?inline';
 import { selectedText, chatContainerVisible, overlayPosition } from '../lib/stores';
 import {
   setupFloatingPosition,
+  createPersistentVirtualElement,
   createScrollAwarePersistentVirtualElement,
+  createFixedVirtualElement,
 } from '../lib/utils/floating-position';
 
 // https://developer.chrome.com/docs/extensions/mv3/content_scripts/
@@ -68,29 +70,35 @@ function showBuntyOverlay(x: number, y: number) {
   // Show the shadowHost
   shadowHost.style.display = 'block';
 
-  // Create virtual element based on actual selection bounds
-  const virtualElement = createScrollAwarePersistentVirtualElement({ x, y });
+  if (isDraggedPosition && manualPosition) {
+    // Use previously dragged manual position
+    shadowHost.style.top = `${manualPosition.y}px`;
+    shadowHost.style.left = `${manualPosition.x}px`;
+    overlayPosition.set(manualPosition);
+    console.log('Reusing manual dragged position:', manualPosition);
+  } else {
+    // Create virtual element based on actual selection bounds
+    const virtualElement = createScrollAwarePersistentVirtualElement({ x, y });
 
-  // Set up static position that doesn't change during scroll
-  const cleanup = setupFloatingPosition(
-    virtualElement,
-    shadowHost,
-    {
-      placement: 'right-start',
-      offsetValue: 10,
-      yAdjustment: 25,
-      fallbackPlacements: ['top-start', 'bottom-start', 'left-start'],
-      padding: 8,
-    },
-    (posX: any, posY: any) => {
-      // Update the overlay position store
-      overlayPosition.set({ x: posX, y: posY });
-      console.log('ShadowHost statically positioned at:', { x: posX, y: posY });
-    }
-  );
+    // Set up static position that doesn't change during scroll
+    const cleanup = setupFloatingPosition(
+      virtualElement,
+      shadowHost,
+      {
+        placement: 'right-start',
+        offsetValue: 10,
+        yAdjustment: 25,
+        fallbackPlacements: ['top-start', 'bottom-start', 'left-start'],
+        padding: 8,
+      },
+      (posX: any, posY: any) => {
+        // Update the overlay position store
+        overlayPosition.set({ x: posX, y: posY });
+        console.log('ShadowHost positioned at:', { x: posX, y: posY });
+      }
+    );
 
-  // Store cleanup function for later use
-  if (shadowHost) {
+    // Store cleanup function for later use
     (shadowHost as any).__floatingCleanup = cleanup;
   }
 
@@ -99,16 +107,8 @@ function showBuntyOverlay(x: number, y: number) {
     listenForChatOverlayMounted();
   }, 10);
 
-  console.log('container: ', container);
-  console.log('selectedText: ', selectedText);
-
-  // Mount new instance with current data
-  overlayInstance = mount(Overlay, {
-    target: container,
-    props: {
-      visible: true,
-    },
-  });
+  // Mount new instance
+  overlayInstance = mount(Overlay, { target: container, props: { visible: true } });
 }
 
 function listenForChatOverlayMounted() {
@@ -124,21 +124,21 @@ function listenForChatOverlayMounted() {
 // Drag state
 let isDragging = false;
 let dragOffset = { x: 0, y: 0 };
+let floatingCleanup: (() => void) | null = null;
+let isDraggedPosition = false;
+let manualPosition: { x: number; y: number } | null = null;
 
 function setupDragListeners() {
   console.log('setupDragListeners');
   if (!shadowRoot) return;
   console.log('shadowRoot', shadowRoot);
-  // const chatOverlay = shadowRoot.querySelector('.chat-overlay');
-  // if (!chatOverlay) return;
-  // console.log("chatOverlay", chatOverlay);
   // Listen for drag start events from the component
   document.addEventListener('drag-start', e => {
     console.log('drag-start event', e);
     const { offset, initialPos } = (e as CustomEvent).detail;
     isDragging = true;
     dragOffset = offset;
-    // Add global event listeners only when dragging starts
+    
     document.addEventListener('mousemove', handleDragMove as EventListener);
     document.addEventListener('mouseup', handleDragEnd as EventListener);
     document.body.classList.add('dragging-cursor');
@@ -164,6 +164,10 @@ function handleDragMove(event: Event) {
   // Update shadow host position
   shadowHost.style.top = `${newPos.y}px`;
   shadowHost.style.left = `${newPos.x}px`;
+  
+  // Store the manual position
+  manualPosition = newPos;
+  isDraggedPosition = true;
 
   // Notify component of position change
   if (shadowRoot) {
@@ -182,12 +186,22 @@ function handleDragEnd() {
 
   isDragging = false;
 
-  // Remove global event listeners that were added during drag start
   document.removeEventListener('mousemove', handleDragMove as EventListener);
   document.removeEventListener('mouseup', handleDragEnd as EventListener);
   document.body.classList.remove('dragging-cursor');
 
   console.log('Drag ended');
+
+  // After drag, keep element fixed relative to viewport on scroll by attaching floating position to fixed virtual element
+  if (manualPosition && shadowHost) {
+    // Ensure any previous cleanup stopped
+    if ((shadowHost as any).__floatingCleanup) {
+      (shadowHost as any).__floatingCleanup();
+    }
+    const fixedVE = createFixedVirtualElement(manualPosition);
+    const cleanup = setupFloatingPosition(fixedVE, shadowHost, { placement: 'right-start', offsetValue: 0, yAdjustment: 0, fallbackPlacements: [] });
+    (shadowHost as any).__floatingCleanup = cleanup;
+  }
 }
 
 function hideAvatarOverlay() {
@@ -210,6 +224,10 @@ function hideAvatarOverlay() {
     unmount(overlayInstance);
     overlayInstance = null;
   }
+
+  // Reset manual drag state when overlay fully hidden
+  isDraggedPosition = false;
+  manualPosition = null;
 }
 
 // Debounce function to prevent rapid firing
@@ -248,6 +266,10 @@ const handleMouseUp = debounce((event: MouseEvent) => {
     if (text) {
       chatContainerVisible.set(false);
       selectedText.set(text);
+
+      // Reset manual drag state for new selection
+      isDraggedPosition = false;
+      manualPosition = null;
 
       console.log(selection?.anchorNode);
       showBuntyOverlay(event.clientX, event.clientY - 60);
