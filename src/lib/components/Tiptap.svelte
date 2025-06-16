@@ -19,6 +19,10 @@
 	let selectedModel = 'gpt-4';
 	let modelSearchQuery = '';
 	let isModelDropdownOpen = false;
+	let isSuggestionDropdownOpen = false;
+	
+	// Dynamic context items
+	let contextItems: Array<{id: string, label: string, content: string}> = [];
 	
 	const dispatch = createEventDispatcher<{
 		update: { content: string };
@@ -49,15 +53,57 @@
 			id: 'selected-text',
 			label: 'Selected Text',
 			description: 'Add the selected text as context',
+			icon: '📝',
 			action: () => {
 				const text = get(selectedText);
-				return `**Selected Text:**\n"${text}"\n\n`;
+				if (text && text.trim()) {
+					addContextItem('Selected Text', text);
+					return true; // Indicate successful action
+				}
+				return false;
+			}
+		},
+		{
+			id: 'clipboard',
+			label: 'Clipboard',
+			description: 'Add clipboard content as context',
+			icon: '📋',
+			action: async () => {
+				try {
+					const text = await navigator.clipboard.readText();
+					if (text && text.trim()) {
+						addContextItem('Clipboard', text);
+						return true;
+					}
+				} catch (err) {
+					console.warn('Could not read clipboard:', err);
+				}
+				return false;
 			}
 		},
 		// Future commands can be added here
 	];
 
 	let suggestionElement: HTMLDivElement | null = null;
+
+	function addContextItem(label: string, content: string) {
+		const id = `context-${Date.now()}`;
+		contextItems = [...contextItems, { id, label, content }];
+	}
+
+	function removeContextItem(id: string) {
+		contextItems = contextItems.filter(item => item.id !== id);
+	}
+
+	function triggerSuggestionDropdown() {
+		if (editor && !disabled && !isSuggestionDropdownOpen) {
+			// Focus the editor first
+			editor.commands.focus();
+			
+			// Insert @ symbol to trigger the mention dropdown
+			editor.commands.insertContent('@');
+		}
+	}
 
 	onMount(() => {
 		editor = new Editor({
@@ -82,6 +128,7 @@
 
 							return {
 								onStart: (props: any) => {
+									isSuggestionDropdownOpen = true;
 									component = createSuggestionList(props);
 								},
 
@@ -91,6 +138,7 @@
 
 								onKeyDown(props: any) {
 									if (props.event.key === 'Escape') {
+										isSuggestionDropdownOpen = false;
 										component?.destroy();
 										return true;
 									}
@@ -99,6 +147,7 @@
 								},
 
 								onExit() {
+									isSuggestionDropdownOpen = false;
 									component?.destroy();
 								},
 							};
@@ -132,13 +181,16 @@
 		let selectedIndex = 0;
 		let commandItems = props.items;
 
-		const selectItem = (index: number) => {
+		const selectItem = async (index: number) => {
 			const item = commandItems[index];
 			if (item && item.action) {
-				const contextText = item.action();
-				// Insert the command result
-				props.command({ id: item.id, label: contextText });
+				const success = await item.action();
+				if (success) {
+					// Remove the @ symbol that triggered the dropdown
+					props.command({ id: item.id, label: '' });
+				}
 			}
+			isSuggestionDropdownOpen = false;
 		};
 
 		const updateListItem = (index: number) => {
@@ -149,7 +201,7 @@
 		const renderList = () => {
 			if (!suggestionElement) {
 				suggestionElement = document.createElement('div');
-				suggestionElement.className = 'suggestion-list';
+				suggestionElement.className = 'suggestion-list-improved';
 
 				// Try to append to suggestion container first, fallback to shadow root or document body
 				const targetContainer = suggestionContainer || element?.getRootNode() || document.body;
@@ -160,17 +212,21 @@
 			suggestionElement.innerHTML = commandItems
 				.map(
 					(item: any, index: number) => `
-					<div class="suggestion-item ${index === selectedIndex ? 'selected' : ''}" 
+					<div class="suggestion-item-improved ${index === selectedIndex ? 'selected' : ''}" 
 						 data-index="${index}">
-						<div class="suggestion-label">${item.label}</div>
-						<div class="suggestion-description">${item.description}</div>
+						<div class="suggestion-icon">${item.icon || '⚡'}</div>
+						<div class="suggestion-content">
+							<div class="suggestion-label">${item.label}</div>
+							<div class="suggestion-description">${item.description}</div>
+						</div>
+						<div class="suggestion-shortcut">Enter</div>
 					</div>
 				`
 				)
 				.join('');
 
 			// Add click handlers
-			suggestionElement.querySelectorAll('.suggestion-item').forEach((el, index) => {
+			suggestionElement.querySelectorAll('.suggestion-item-improved').forEach((el, index) => {
 				el.addEventListener('click', () => selectItem(index));
 			});
 
@@ -180,7 +236,7 @@
 				const editorRect = element.getBoundingClientRect();
 
 				suggestionElement.style.position = 'fixed';
-				suggestionElement.style.top = `${rect.bottom + 5}px`;
+				suggestionElement.style.top = `${rect.bottom + 8}px`;
 				suggestionElement.style.left = `${rect.left}px`;
 				suggestionElement.style.display = 'block';
 				suggestionElement.style.zIndex = '2147483647';
@@ -297,28 +353,29 @@
 	<div class="editor-wrapper">
 		
 		<div class="editor-context-wrapper">
-			<div class="editor-context-item"
-			style="font-weight: 700 !important;">
-				@
-			</div>
-			<div class="editor-context-item">
-				justify-content
-			</div>
-			<div class="editor-context-item">
-				justify-content
-			</div>
-			<div class="editor-context-item">
-				justify-content
-			</div>
-			<div class="editor-context-item">
-				justify-content
-			</div>
-			<div class="editor-context-item">
-				justify-content
-			</div>
-			<div class="editor-context-item">
-				justify-content
-			</div>
+			<!-- svelte-ignore a11y_click_events_have_key_events -->
+			<!-- svelte-ignore a11y_no_static_element_interactions -->
+			<button class="editor-context-item add-context-btn" 
+				 on:click={triggerSuggestionDropdown}
+				 style="font-weight: 600 !important; cursor: pointer;">
+				  @ Add Context
+			</button>
+			
+			{#each contextItems as item (item.id)}
+				<div class="editor-context-item context-item-dynamic">
+					<span class="context-label">{item.label}</span>
+					<!-- svelte-ignore a11y_consider_explicit_label -->
+					<button 
+						class="context-remove-btn" 
+						on:click={() => removeContextItem(item.id)}
+						title="Remove context"
+					>
+						<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+							<path d="M18 6L6 18M6 6l12 12"/>
+						</svg>
+					</button>
+				</div>
+			{/each}
 		</div>
 
 		<!-- svelte-ignore element_invalid_self_closing_tag -->
