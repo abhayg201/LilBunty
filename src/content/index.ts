@@ -199,7 +199,7 @@ function handleDragEnd() {
       (shadowHost as any).__floatingCleanup();
     }
     const fixedVE = createFixedVirtualElement(manualPosition);
-    const cleanup = setupFloatingPosition(fixedVE, shadowHost, { placement: 'right-start', offsetValue: 0, yAdjustment: 0, fallbackPlacements: [] });
+    const cleanup = setupFloatingPosition(fixedVE, shadowHost, { placement: 'right-start', offsetValue: 10, yAdjustment: 0, fallbackPlacements: [] });
     (shadowHost as any).__floatingCleanup = cleanup;
   }
 }

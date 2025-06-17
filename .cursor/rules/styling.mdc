@@ -1,0 +1,6 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+If the task relates anything related to styling refer to the content/index.ts file  and see how are styles being loaded. Since the styles are loaded via a shadow dom, simply adding them in <style> tags in .svelte files won't work. So you must use tailwind classes as much as you can and the rest of styles must be added how it is being done in content/index.ts file

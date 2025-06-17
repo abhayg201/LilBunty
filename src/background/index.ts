@@ -10,6 +10,7 @@ const SYSTEM_PROMPT =
 // Background service workers
 // https://developer.chrome.com/docs/extensions/mv3/service_workers/
 
+// Use browser.runtime instead of chrome.runtime for cross-browser compatibility
 chrome.runtime.onInstalled.addListener(() => {
   count.subscribe(console.log);
   getApiKey().then(apiKey => {

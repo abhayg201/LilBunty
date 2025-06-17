@@ -3,10 +3,9 @@
 	import { Editor } from '@tiptap/core';
 	import StarterKit from '@tiptap/starter-kit';
 	import Placeholder from '@tiptap/extension-placeholder';
-	import Mention from '@tiptap/extension-mention';
 	import { selectedText } from '../stores';
-	import { get } from 'svelte/store';
 	import * as DropdownMenu from "$lib/components/ui/dropdown-menu/index.js";
+	import ContextMentions from './ContextMentions.svelte';
 
 	export let content = '';
 	export let placeholder = 'Ask anything';
@@ -15,27 +14,18 @@
 
 	let element: HTMLDivElement;
 	let editor: Editor | null = null;
-	let suggestionContainer: HTMLDivElement;
 	let selectedModel = 'gpt-4';
 	let modelSearchQuery = '';
 	let isModelDropdownOpen = false;
-	let isSuggestionDropdownOpen = false;
+	let isContextMentionsOpen = false;
 	
 	// Dynamic context items
 	let contextItems: Array<{id: string, label: string, content: string}> = [];
 	
-	// Reactive position tracking for suggestion dropdown
-	let suggestionRect: { bottom: number; left: number } | null = null;
-	let suggestionElement: HTMLDivElement | null = null;
+	// Context mentions positioning
+	let contextMentionsPosition: { top: number; left: number } | null = null;
 
-	// Reactive statement to update suggestion position
-	$: if (suggestionElement && suggestionRect) {
-		suggestionElement.style.position = 'fixed';
-		suggestionElement.style.top = `${suggestionRect.bottom + 8}px`;
-		suggestionElement.style.left = `${suggestionRect.left}px`;
-		suggestionElement.style.display = 'block';
-		suggestionElement.style.zIndex = '214748364712';
-	}
+
 
 	const dispatch = createEventDispatcher<{
 		update: { content: string };
@@ -60,43 +50,6 @@
 	// Get selected model label for display
 	$: selectedModelLabel = models.find(m => m.value === selectedModel)?.label || selectedModel;
 
-	// @ Commands configuration
-	const commands = [
-		{
-			id: 'selected-text',
-			label: 'Selected Text',
-			description: 'Add the selected text as context',
-			icon: '📝',
-			action: () => {
-				const text = get(selectedText);
-				if (text && text.trim()) {
-					addContextItem('Selected Text', text);
-					return true; // Indicate successful action
-				}
-				return false;
-			}
-		},
-		{
-			id: 'clipboard',
-			label: 'Clipboard',
-			description: 'Add clipboard content as context',
-			icon: '📋',
-			action: async () => {
-				try {
-					const text = await navigator.clipboard.readText();
-					if (text && text.trim()) {
-						addContextItem('Clipboard', text);
-						return true;
-					}
-				} catch (err) {
-					console.warn('Could not read clipboard:', err);
-				}
-				return false;
-			}
-		},
-		// Future commands can be added here
-	];
-
 	function addContextItem(label: string, content: string) {
 		const id = `context-${Date.now()}`;
 		contextItems = [...contextItems, { id, label, content }];
@@ -106,14 +59,25 @@
 		contextItems = contextItems.filter(item => item.id !== id);
 	}
 
-	function triggerSuggestionDropdown() {
-		if (editor && !disabled && !isSuggestionDropdownOpen) {
-			// Focus the editor first
-			editor.commands.focus();
-			
-			// Insert @ symbol to trigger the mention dropdown
-			editor.commands.insertContent('@');
+	function triggerContextMentions() {
+		if (element && !disabled && !isContextMentionsOpen) {
+			const rect = element.getBoundingClientRect();
+			contextMentionsPosition = {
+				top: rect.bottom + 8,
+				left: rect.left
+			};
+			isContextMentionsOpen = true;
 		}
+	}
+
+	function handleContextMentionSelect(event: CustomEvent<{id: string, label: string, content: string}>) {
+		const { label, content } = event.detail;
+		addContextItem(label, content);
+		isContextMentionsOpen = false;
+	}
+
+	function handleContextMentionClose() {
+		isContextMentionsOpen = false;
 	}
 
 	onMount(() => {
@@ -124,54 +88,7 @@
 				Placeholder.configure({
 					placeholder: placeholder,
 				}),
-				Mention.configure({
-					HTMLAttributes: {
-						class: 'mention',
-					},
-					suggestion: {
-						items: ({ query }) => {
-							return commands
-								.filter(item => item.label.toLowerCase().startsWith(query.toLowerCase()))
-								.slice(0, 5);
-						},
-						render: () => {
-							let component: any;
 
-							return {
-								onStart: (props: any) => {
-									isSuggestionDropdownOpen = true;
-									component = createSuggestionList(props);
-								},
-
-								onUpdate(props: any) {
-									component?.updateProps(props);
-									if (props.clientRect) {
-										const rect = props.clientRect();
-										suggestionRect = {
-											bottom: rect.bottom,
-											left: rect.left
-										};
-									}
-								},
-
-								onKeyDown(props: any) {
-									if (props.event.key === 'Escape') {
-										isSuggestionDropdownOpen = false;
-										component?.destroy();
-										return true;
-									}
-
-									return component?.onKeyDown(props);
-								},
-
-								onExit() {
-									isSuggestionDropdownOpen = false;
-									component?.destroy();
-								},
-							};
-						},
-					},
-				}),
 			],
 			content: content,
 			editable: !disabled,
@@ -195,109 +112,12 @@
 		}, 100);
 	});
 
-	function createSuggestionList(props: any) {
-		let selectedIndex = 0;
-		let commandItems = props.items;
 
-		const selectItem = async (index: number) => {
-			const item = commandItems[index];
-			if (item && item.action) {
-				const success = await item.action();
-				if (success) {
-					// Remove the @ symbol that triggered the dropdown
-					props.command({ id: item.id, label: '' });
-				}
-			}
-			isSuggestionDropdownOpen = false;
-		};
-
-		const updateListItem = (index: number) => {
-			selectedIndex = index;
-			renderList();
-		};
-
-		const renderList = () => {
-			if (!suggestionElement) {
-				suggestionElement = document.createElement('div');
-				suggestionElement.className = 'suggestion-list-improved';
-
-				// Try to append to suggestion container first, fallback to shadow root or document body
-				const targetContainer = suggestionContainer || element?.getRootNode() || document.body;
-
-				targetContainer.appendChild(suggestionElement);
-			}
-
-			suggestionElement.innerHTML = commandItems
-				.map(
-					(item: any, index: number) => `
-					<div class="suggestion-item-improved ${index === selectedIndex ? 'selected' : ''}" 
-						 data-index="${index}">
-						<div class="suggestion-icon">${item.icon || '⚡'}</div>
-						<div class="suggestion-content">
-							<div class="suggestion-label">${item.label}</div>
-							<div class="suggestion-description">${item.description}</div>
-						</div>
-						<div class="suggestion-shortcut">Enter</div>
-					</div>
-				`
-				)
-				.join('');
-
-			// Add click handlers
-			suggestionElement.querySelectorAll('.suggestion-item-improved').forEach((el, index) => {
-				el.addEventListener('click', () => selectItem(index));
-			});
-
-			// Update reactive position data instead of setting styles directly
-		};
-
-		renderList();
-
-		return {
-			onKeyDown: ({ event }: { event: KeyboardEvent }) => {
-				if (event.key === 'ArrowUp') {
-					updateListItem((selectedIndex + commandItems.length - 1) % commandItems.length);
-					return true;
-				}
-
-				if (event.key === 'ArrowDown') {
-					updateListItem((selectedIndex + 1) % commandItems.length);
-					return true;
-				}
-
-				if (event.key === 'Enter') {
-					selectItem(selectedIndex);
-					return true;
-				}
-
-				return false;
-			},
-
-			updateProps: (newProps: any) => {
-				props = newProps;
-				commandItems = props.items;
-				selectedIndex = 0;
-				renderList();
-			},
-
-			destroy: () => {
-				if (suggestionElement) {
-					suggestionElement.remove();
-					suggestionElement = null;
-				}
-				suggestionRect = null;
-			},
-		};
-	}
 
 	onDestroy(() => {
 		if (editor) {
 			editor.destroy();
 		}
-		if (suggestionElement) {
-			suggestionElement.remove();
-		}
-		suggestionRect = null;
 	});
 
 	// Export functions for parent component
@@ -366,7 +186,7 @@
 			<!-- svelte-ignore a11y_click_events_have_key_events -->
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<button class="editor-context-item add-context-btn" 
-				 on:click={triggerSuggestionDropdown}
+				 on:click={triggerContextMentions}
 				 style="font-weight: 600 !important; cursor: pointer;">
 				  @ Add Context
 			</button>
@@ -465,8 +285,13 @@
 		</div>
 	</div>
 	
-	<!-- Container for suggestions dropdown -->
-	<div bind:this={suggestionContainer} class="suggestion-container"></div>
+	<!-- Context Mentions Component -->
+	<ContextMentions
+		isOpen={isContextMentionsOpen}
+		position={contextMentionsPosition}
+		on:select={handleContextMentionSelect}
+		on:close={handleContextMentionClose}
+	/>
 </div>
 
 <style>
