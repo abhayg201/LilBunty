@@ -375,7 +375,7 @@
 
 {#if $chatContainerVisible}
   <div class="chat-overlay {dragging ? 'dragging' : ''}" bind:this={chatOverlay}>
-    <Card class="chat-card bg-background border border-border rounded-xl overflow-hidden shadow-xl">
+    <Card class="chat-card relative bg-background border border-border rounded-xl overflow-hidden shadow-xl">
       <CardHeader class="pb-3">
         <div class="flex items-center justify-between">
           <CardTitle class="text-lg">AI Assistant</CardTitle>
@@ -544,7 +544,7 @@
 
       <CardContent class="space-y-4">
         <!-- Selected Text Display -->
-        <div
+        <!-- <div
           class="selected-text-section bg-gradient-to-br from-muted/30 to-muted/10 border border-border rounded-lg p-4 animate-fade-in-up"
         >
           <h4 class="text-sm font-semibold text-primary mb-2">Selected Text:</h4>
@@ -553,9 +553,9 @@
           >
             "{$selectedText}"
           </div>
-        </div>
+        </div> -->
 
-        <Separator />
+        <!-- <Separator /> -->
 
         <!-- Custom Prompt Input -->
         <div
@@ -639,44 +639,3 @@
     </Card>
   </div>
 {/if}
-
-<style>
-  /* Essential component-specific styles only - thread styling now handled by Tailwind + shadow-styles.css */
-  .chat-overlay {
-    position: relative;
-    z-index: 10000;
-    animation: slideIn 0.2s ease-out;
-    filter: drop-shadow(0 25px 25px rgb(0 0 0 / 0.15));
-  }
-
-  .chat-overlay.dragging {
-    cursor: grabbing;
-    user-select: none;
-  }
-
-  .chat-card {
-    width: 420px;
-    max-width: 90vw;
-    max-height: 80vh;
-    backdrop-filter: blur(8px);
-  }
-
-  .drag-handle {
-    cursor: grab;
-  }
-
-  .drag-handle:active {
-    cursor: grabbing;
-  }
-
-  @keyframes slideIn {
-    from {
-      opacity: 0;
-      transform: scale(0.95);
-    }
-    to {
-      opacity: 1;
-      transform: scale(1);
-    }
-  }
-</style>

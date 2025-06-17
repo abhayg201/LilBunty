@@ -217,7 +217,7 @@
 		
 		<div class="editor-controls">
 			<!-- Model Selector Dropdown -->
-			<DropdownMenu.Root bind:open={isModelDropdownOpen}>
+			<!-- <DropdownMenu.Root bind:open={isModelDropdownOpen}>
 				<DropdownMenu.Trigger asChild let:builder>
 					<button 
 						class="model-selector-trigger" 
@@ -266,7 +266,7 @@
 						</div>
 					{/if}
 				</DropdownMenu.Content>
-			</DropdownMenu.Root>
+			</DropdownMenu.Root> -->
 
 			<!-- Send Button -->
 			<!-- svelte-ignore a11y_consider_explicit_label -->

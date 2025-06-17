@@ -1,0 +1,55 @@
+/* Chat Container Styles */
+.chat-container {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    width: 400px !important;
+    height: 300px !important;
+    background: white !important;
+    border: 1px solid #ccc !important;
+    border-radius: 8px !important;
+    z-index: 2147483648 !important;
+    padding: 16px !important;
+    font-family: system-ui, -apple-system, sans-serif !important;
+    overflow: auto !important; /* Important to allow scrolling if content overflows */
+    word-wrap: break-word !important; /* Break long words instead of overflowing */
+    white-space: pre-wrap;
+}
+
+.chat-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+}
+
+.chat-header span {
+    font-size: 14px !important;
+    color: #374151 !important;
+    font-family: system-ui, -apple-system, sans-serif !important;
+}
+
+.chat-header button {
+    background: none !important;
+    border: none !important;
+    font-size: 20px !important;
+    cursor: pointer !important;
+    color: #6b7280 !important;
+    padding: 4px !important;
+    border-radius: 4px !important;
+}
+
+.chat-header button:hover {
+    background: #f3f4f6 !important;
+    color: #374151 !important;
+}
+
+.chat-content {
+    font-family: system-ui, -apple-system, sans-serif !important;
+}
+
+.chat-content p {
+    margin: 0 0 8px 0 !important;
+    font-size: 14px !important;
+    color: #374151 !important;
+} 

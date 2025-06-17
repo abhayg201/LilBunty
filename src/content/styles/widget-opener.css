@@ -1,0 +1,30 @@
+/* Widget opener styles */
+.widget-opener {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    animation: fadeIn 0.2s ease-out !important;
+    position: relative !important;
+    z-index: 1 !important;
+}
+
+/* Badge styles for the widget opener */
+.widget-opener span {
+    background: #3b82f6 !important;
+    color: white !important;
+    border-radius: 9999px !important;
+    padding: 8px 16px !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    border: none !important;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
+    font-family: system-ui, -apple-system, sans-serif !important;
+}
+
+.widget-opener span:hover {
+    background: #2563eb !important;
+    transform: scale(1.05) !important;
+    box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4) !important;
+} 
