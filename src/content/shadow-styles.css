@@ -1,288 +1,37 @@
-/* Reset and isolate styles within shadow DOM */
-:host {
-    all: initial;
-    font-family: system-ui, -apple-system, sans-serif;
-}
+/* 
+ * Shadow DOM Styles Entry Point
+ * This file imports all modularized CSS files for better maintainability
+ */
 
-* {
-    box-sizing: border-box;
-}
+/* Base styles - CSS variables, reset, and core styling */
+@import './styles/base.css';
 
-/* Ensure CSS variables are available in shadow DOM */
-:host, #text-selection-overlay {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
-    --destructive: 0 72.2% 50.6%;
-    --destructive-foreground: 0 0% 98%;
-    --ring: 0 0% 3.9%;
-    --radius: 0.5rem;
-}
+/* Animation keyframes and utility classes */
+@import './styles/animations.css';
 
-#text-selection-overlay {
-    all: initial;
-    font-family: system-ui, -apple-system, sans-serif;
-}
+/* Widget opener button styles */
+@import './styles/widget-opener.css';
 
-/* Widget opener styles */
-.widget-opener {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    animation: fadeIn 0.2s ease-out !important;
-    position: relative !important;
-    z-index: 1 !important;
-}
+/* Chat overlay and card container styles */
+@import './styles/chat-overlay.css';
 
-/* Badge styles for the widget opener */
-.widget-opener span {
-    background: #3b82f6 !important;
-    color: white !important;
-    border-radius: 9999px !important;
-    padding: 8px 16px !important;
-    font-size: 14px !important;
-    font-weight: 500 !important;
-    cursor: pointer !important;
-    transition: all 0.2s ease !important;
-    border: none !important;
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
-    font-family: system-ui, -apple-system, sans-serif !important;
-}
+/* Basic chat container styles */
+@import './styles/chat-container.css';
 
-.widget-opener span:hover {
-    background: #2563eb !important;
-    transform: scale(1.05) !important;
-    box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4) !important;
-}
+/* Tiptap editor and input field styles */
+@import './styles/tiptap-editor.css';
 
-/* Chat card overlay styles */
-.chat-overlay {
-    position: fixed !important;
-    /* top: 50% !important;
-    left: 50% !important;
-    transform: translate(-50%, -50%) !important; */
-    z-index: 2147483647 !important;
-    pointer-events: auto !important;
-    animation: slideIn 0.2s ease-out !important;
-}
-.chat-overlay.dragging {
-    user-select: none;
-    cursor: move;
-  }
-.chat-card {
-    width: 500px !important;
-    max-width: 90vw !important;
-    max-height: 80vh !important;
-    overflow: hidden !important;
-    background: white !important;
-    border-radius: 12px !important;
-    border: 1px solid #e5e7eb !important;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
-    font-family: system-ui, -apple-system, sans-serif !important;
-}
-.drag-handle {
-    width: 24px;
-    height: 24px;
-    background: #f3f4f6;
-    border-radius: 6px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: grab;
-    margin-right: 0.5rem;
-    transition: background 0.2s;
-    border: 1px solid #e5e7eb;
-  }
-  .drag-handle:active {
-    cursor: grabbing;
-    background: #e5e7eb;
-  }
-  body.dragging-cursor, .chat-overlay.dragging-cursor {
-    cursor: grabbing !important;
-  }
-/* Ensure proper text styling inside the card */
-.chat-card * {
-    font-family: system-ui, -apple-system, sans-serif !important;
-}
+/* Model selector dropdown styles */
+@import './styles/model-selector.css';
 
-/* Override any conflicting styles for shadcn components */
-.chat-overlay button,
-.chat-overlay input,
-.chat-overlay textarea {
-    font-family: system-ui, -apple-system, sans-serif !important;
-}
+/* Suggestion dropdown styles */
+@import './styles/suggestions.css';
 
-/* Animation keyframes */
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(-10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
+/* Context items and controls */
+@import './styles/context-items.css';
 
-@keyframes slideIn {
-    from {
-        opacity: 0;
-        transform: translate(-50%, -50%) scale(0.95);
-    }
-    to {
-        opacity: 1;
-        transform: translate(-50%, -50%) scale(1);
-    }
-}
+/* Avatar and tooltip styles */
+@import './styles/avatar.css';
 
-@keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-/* Legacy styles - keeping for compatibility but may be removed */
-.simple-overlay {
-    display: flex !important;
-    align-items: center !important;
-    gap: 8px !important;
-    background: white !important;
-    border-radius: 12px !important;
-    padding: 8px !important;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
-    border: 1px solid #e5e7eb !important;
-    
-    transition: transform 0.2s ease !important;
-    max-width: 300px !important;
-    font-family: system-ui, -apple-system, sans-serif !important;
-    animation: fadeIn 0.2s ease-out !important;
-    position: relative !important;
-    z-index: 1 !important;
-}
-
-.simple-overlay:hover {
-    transform: scale(1.05) !important;
-}
-
-.avatar-size {
-    width: 48px !important;
-    height: 48px !important;
-    border: 2px solid white !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
-    border-radius: 50% !important;
-    overflow: hidden !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    flex-shrink: 0 !important;
-    cursor: pointer !important;
-}
-
-.avatar-fallback {
-    background: #3b82f6 !important;
-    color: white !important;
-    font-weight: bold !important;
-    font-size: 14px !important;
-    width: 100% !important;
-    height: 100% !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    border-radius: 50% !important;
-}
-
-.tooltip {
-    max-width: 200px !important;
-    min-width: 0 !important;
-}
-
-.selected-text {
-    font-size: 14px !important;
-    color: #374151 !important;
-    margin: 0 0 4px 0 !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    white-space: nowrap !important;
-    font-family: system-ui, -apple-system, sans-serif !important;
-}
-
-.hint {
-    font-size: 12px !important;
-    color: #6b7280 !important;
-    margin: 0 !important;
-    font-family: system-ui, -apple-system, sans-serif !important;
-}
-
-/* Chat Container Styles */
-.chat-container {
-    position: fixed !important;
-    top: 50% !important;
-    left: 50% !important;
-    transform: translate(-50%, -50%) !important;
-    width: 400px !important;
-    height: 300px !important;
-    background: white !important;
-    border: 1px solid #ccc !important;
-    border-radius: 8px !important;
-    z-index: 2147483648 !important;
-    padding: 16px !important;
-    font-family: system-ui, -apple-system, sans-serif !important;
-    overflow: auto; /* ⬅️ Important to allow scrolling if content overflows */
-    word-wrap: break-word; /* ⬅️ Break long words instead of overflowing */
-    white-space: pre-wrap;
-}
-
-.chat-header {
-    display: flex !important;
-    justify-content: space-between !important;
-    align-items: center !important;
-}
-
-.chat-header span {
-    font-size: 14px !important;
-    color: #374151 !important;
-    font-family: system-ui, -apple-system, sans-serif !important;
-}
-
-.chat-header button {
-    background: none !important;
-    border: none !important;
-    font-size: 20px !important;
-    cursor: pointer !important;
-    color: #6b7280 !important;
-    padding: 4px !important;
-    border-radius: 4px !important;
-}
-
-.chat-header button:hover {
-    background: #f3f4f6 !important;
-    color: #374151 !important;
-}
-
-.chat-content {
-    font-family: system-ui, -apple-system, sans-serif !important;
-}
-
-.chat-content p {
-    margin: 0 0 8px 0 !important;
-    font-size: 14px !important;
-    color: #374151 !important;
-} 
+/* Thread container and message styles */
+@import './styles/thread.css';

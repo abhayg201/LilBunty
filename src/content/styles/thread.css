@@ -1,0 +1,91 @@
+/* Thread-specific styles */
+.thread-container {
+    scrollbar-width: thin !important;
+    scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent !important;
+}
+
+/* Custom scrollbar styling for thread containers */
+.thread-container::-webkit-scrollbar {
+    width: 6px !important;
+}
+
+.thread-container::-webkit-scrollbar-track {
+    background: transparent !important;
+}
+
+.thread-container::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.3) !important;
+    border-radius: 3px !important;
+}
+
+.thread-container::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.5) !important;
+}
+
+/* Message text markdown styling - these can't be done with Tailwind utility classes */
+.message-text :global(p) {
+    margin: 0 0 8px 0 !important;
+}
+
+.message-text :global(p:last-child) {
+    margin-bottom: 0 !important;
+}
+
+.message-text :global(code) {
+    background: hsl(var(--muted) / 0.8) !important;
+    padding: 2px 6px !important;
+    border-radius: 4px !important;
+    font-size: 0.8em !important;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace !important;
+}
+
+.user-message .message-text :global(code) {
+    background: hsl(var(--primary-foreground) / 0.2) !important;
+    color: hsl(var(--primary-foreground)) !important;
+}
+
+.message-text :global(pre) {
+    background: hsl(var(--muted)) !important;
+    padding: 12px !important;
+    border-radius: 8px !important;
+    overflow-x: auto !important;
+    margin: 8px 0 !important;
+    border: 1px solid hsl(var(--border)) !important;
+}
+
+.user-message .message-text :global(pre) {
+    background: hsl(var(--primary-foreground) / 0.1) !important;
+    border-color: hsl(var(--primary-foreground) / 0.2) !important;
+}
+
+.message-text :global(pre code) {
+    background: transparent !important;
+    padding: 0 !important;
+}
+
+.message-text :global(ul) {
+    margin: 8px 0 !important;
+    padding-left: 20px !important;
+}
+
+.message-text :global(ol) {
+    margin: 8px 0 !important;
+    padding-left: 20px !important;
+}
+
+.message-text :global(li) {
+    margin: 4px 0 !important;
+}
+
+.message-text :global(blockquote) {
+    border-left: 4px solid hsl(var(--primary)) !important;
+    padding-left: 12px !important;
+    margin: 12px 0 !important;
+    color: hsl(var(--muted-foreground)) !important;
+    font-style: italic !important;
+}
+
+.user-message .message-text :global(blockquote) {
+    border-left-color: hsl(var(--primary-foreground)) !important;
+    color: hsl(var(--primary-foreground) / 0.8) !important;
+}
