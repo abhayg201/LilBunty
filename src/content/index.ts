@@ -13,7 +13,6 @@ import {
 // https://developer.chrome.com/docs/extensions/mv3/content_scripts/
 
 // Import global styles
-import './styles.css';
 let overlayInstance: any = null;
 let shadowHost: HTMLElement;
 let shadowRoot: ShadowRoot | null = null;

@@ -1,6 +1,5 @@
 <script lang="ts">
   import { Badge } from '$lib/components/ui/badge'
-  import { Button } from '$lib/components/ui/button'
   import { chatContainerVisible, selectedText } from '../lib/stores'
   import ChatContainer from './ChatContainer.svelte'
 
@@ -25,7 +24,7 @@
       variant="default"
       class="cursor-pointer hover:scale-105 transition-transform px-3 py-2 text-sm font-medium"
     >
-      ✨ AI Assistant
+      ✨ 
     </Badge>
   </div>
 {/if}

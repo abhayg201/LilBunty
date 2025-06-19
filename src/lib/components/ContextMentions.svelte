@@ -2,8 +2,7 @@
 	import { createEventDispatcher, onDestroy, onMount } from 'svelte';
 	import { get } from 'svelte/store';
 	import { selectedText } from '../stores';
-	import * as Card from "$lib/components/ui/card/index.js";
-	import { Button } from "$lib/components/ui/button/index.js";
+	import { Card, Button } from "flowbite-svelte";
 
 	export let isOpen = false;
 	export let position: { top: number; left: number } | null = null;
@@ -133,42 +132,41 @@
 		role="listbox"
 		aria-label="Context suggestions"
 	>
-		<Card.Root class="w-80 shadow-lg border-2">
-			<Card.Header class="pb-2">
-				<Card.Title class="text-sm font-medium text-gray-700">Add Context</Card.Title>
-				<Card.Description class="text-xs text-gray-500">
+		<Card class="w-80 shadow-lg border-2">
+			<div class="p-4 pb-2">
+				<h3 class="text-sm font-medium text-gray-700 dark:text-gray-200">Add Context</h3>
+				<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
 					Choose content to add as context
-				</Card.Description>
-			</Card.Header>
-			<Card.Content class="p-0">
+				</p>
+			</div>
+			<div class="p-0">
 				{#if filteredCommands.length > 0}
 					<div class="max-h-60 overflow-y-auto">
 						{#each filteredCommands as command, index}
-							<Button
-								variant={index === selectedIndex ? "secondary" : "ghost"}
-								class="w-full justify-start p-3 h-auto rounded-none border-0 {index === selectedIndex ? 'bg-accent' : ''}"
+							<button
+								class="w-full justify-start p-3 h-auto rounded-none border-0 text-left hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 {index === selectedIndex ? 'bg-blue-50 dark:bg-blue-900/20' : ''}"
 								on:click={() => selectCommand(index)}
 							>
 								<div class="flex items-center gap-3 w-full">
 									<span class="text-lg flex-shrink-0">{command.icon}</span>
 									<div class="flex-1 text-left">
-										<div class="font-medium text-sm">{command.label}</div>
-										<div class="text-xs text-muted-foreground">{command.description}</div>
+										<div class="font-medium text-sm text-gray-900 dark:text-gray-100">{command.label}</div>
+										<div class="text-xs text-gray-500 dark:text-gray-400">{command.description}</div>
 									</div>
 									{#if index === selectedIndex}
-										<span class="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">Enter</span>
+										<span class="text-xs text-gray-500 dark:text-gray-400 bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded">Enter</span>
 									{/if}
 								</div>
-							</Button>
+							</button>
 						{/each}
 					</div>
 				{:else}
-					<div class="p-4 text-center text-sm text-muted-foreground">
+					<div class="p-4 text-center text-sm text-gray-500 dark:text-gray-400">
 						No commands found
 					</div>
 				{/if}
-			</Card.Content>
-		</Card.Root>
+			</div>
+		</Card>
 	</div>
 {/if}
 

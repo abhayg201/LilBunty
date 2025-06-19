@@ -1,17 +1,6 @@
 <script lang="ts">
-  import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardFooter,
-    CardHeader,
-    CardTitle,
-  } from '$lib/components/ui/card';
-  import { Button } from '$lib/components/ui/button';
-  import { Separator } from '$lib/components/ui/separator';
-  import { Avatar, AvatarFallback } from '$lib/components/ui/avatar';
-  import { Loader2 , Plus} from 'lucide-svelte';
-  import { Badge } from '$lib/components/ui/badge';
+  import { Card, Button, Badge, Avatar, Spinner } from 'flowbite-svelte';
+  import { Plus, X, History, Sparkles, Send } from 'lucide-svelte';
   import {
     chatContainerVisible,
     selectedText,
@@ -86,8 +75,6 @@
         { domain: extractDomain(currentUrl) },
         10
       );
-      // CHange the logic below to show the latest thread, do not create a new thread if some thread already exists
-      // Sort the summaries by updatedAt in descending order
 
       if (summariesResponse.success) {
         const sortedSummaries = summariesResponse.data.sort(
@@ -96,7 +83,6 @@
 
         // Get the latest thread
         const latestThread = sortedSummaries[0];
-        // Look for a thread with the same selected text
 
         if (latestThread) {
           // Load the existing thread
@@ -227,35 +213,6 @@
     document.dispatchEvent(dragStartEvent);
   }
 
-  // Predefined prompt templates
-  const promptTemplates = [
-    {
-      id: 'explain',
-      label: 'Explain',
-      prompt: 'Please explain this text in simple terms:',
-    },
-    {
-      id: 'summarize',
-      label: 'Summarize',
-      prompt: 'Please provide a concise summary of:',
-    },
-    {
-      id: 'translate',
-      label: 'Translate',
-      prompt: 'Please translate this text to English:',
-    },
-    {
-      id: 'analyze',
-      label: 'Analyze',
-      prompt: 'Please analyze and provide insights about:',
-    },
-    {
-      id: 'questions',
-      label: 'Ask Questions',
-      prompt: 'Generate thoughtful questions about:',
-    },
-  ];
-
   function handleClose() {
     chatContainerVisible.set(false);
     response = '';
@@ -269,11 +226,6 @@
     // Clear thread state
     currentThread.set(null);
     showThreadHistory.set(false);
-  }
-
-  function selectPromptTemplate(template: (typeof promptTemplates)[0]) {
-    selectedPromptType = template.id;
-    customPrompt = template.prompt;
   }
 
   function handleTiptapSend(event: CustomEvent) {
@@ -374,118 +326,106 @@
 </script>
 
 {#if $chatContainerVisible}
-  <div class="chat-overlay {dragging ? 'dragging' : ''}" bind:this={chatOverlay}>
-    <Card class="chat-card relative bg-background border border-border rounded-xl overflow-hidden shadow-xl">
-      <CardHeader class="pb-3">
-        <div class="flex items-center justify-between">
-          <CardTitle class="text-lg">AI Assistant</CardTitle>
-          <div class="flex items-center gap-2">
-            <!-- Drag handle -->
-            <!-- svelte-ignore a11y_no_static_element_interactions -->
-            <div
-              class="drag-handle flex items-center justify-center p-1 rounded hover:bg-muted transition-colors"
-              title="Drag"
-              on:mousedown={e => onDragStart(e as MouseEvent)}
-            >
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 20 20"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <circle cx="5" cy="6" r="1.5" fill="#bbb" />
-                <circle cx="5" cy="10" r="1.5" fill="#bbb" />
-                <circle cx="5" cy="14" r="1.5" fill="#bbb" />
-                <circle cx="10" cy="6" r="1.5" fill="#bbb" />
-                <circle cx="10" cy="10" r="1.5" fill="#bbb" />
-                <circle cx="10" cy="14" r="1.5" fill="#bbb" />
-              </svg>
-            </div>
-            <Button variant="ghost" size="icon" onclick={handleClose} class="h-8 w-8">
-              <span class="text-lg">×</span>
-            </Button>
-          </div>
+  <div class="chat-overlay rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 text-white 
+  {dragging ? 'dragging' : ''}" bind:this={chatOverlay}>
+    <!-- Header -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div class="flex items-center chat-header justify-between p-4 cursor-grab active:cursor-grabbing" on:mousedown={onDragStart} 
+      title="Drag to move"
+      aria-label="Drag to move chat window" >
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+          <Sparkles class="w-5 h-5" />
         </div>
-      <div class="flex flex-start justify-start mb-4">
-        <Button
-                variant="ghost"
-                size="sm"
-                on:click={createNewThread}
-                disabled={$isLoadingThread}
-                class="text-xs h-7"
-              >
-                {#if $isLoadingThread}
-                  <Loader2 class="h-3 w-3 animate-spin" />
-                {:else}
-                  <Plus class="h-3 w-3" />
-                {/if}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                on:click={() => showThreadHistory.set(!$showThreadHistory)}
-                class="text-xs h-7"
-              >
-                {$showThreadHistory ? 'Hide' : 'Show'} History
-              </Button>
+        <div>
+          <h3 class="font-semibold text-lg">AI Assistant</h3>
+        </div>
       </div>
-    </CardHeader>
+      
+      <div class="flex items-center gap-2">
+        <!-- Drag handle -->
+       
+        
+        <button
+          class="w-8 h-8 bg-white/20 hover:bg-white/30 rounded-lg flex items-center justify-center transition-colors"
+          on:click={handleClose}
+          title="Close"
+        >
+          <X class="w-5 h-5" />
+        </button>
+      </div>
+    </div>
+    <div class="chat-card w-[500px] max-w-[90vw] max-h-[80vh] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+      
+
+      <!-- Controls -->
+      <div class="p-4 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600">
+        <div class="flex items-center gap-2">
+          <button
+            on:click={createNewThread}
+            disabled={$isLoadingThread}
+            class="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-xs rounded-md transition-colors duration-200"
+          >
+            {#if $isLoadingThread}
+              <Spinner class="w-3 h-3" />
+            {:else}
+              <Plus class="w-3 h-3" />
+            {/if}
+            New Chat
+          </button>
+          
+          <button
+            on:click={() => showThreadHistory.set(!$showThreadHistory)}
+            class="flex items-center gap-2 px-3 py-1.5 bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-200 text-xs rounded-md transition-colors duration-200"
+          >
+            <History class="w-3 h-3" />
+            {$showThreadHistory ? 'Hide' : 'Show'} History
+          </button>
+        </div>
+      </div>
 
       <!-- Conversation History -->
       {#if messages.length > 0 || loading}
-        <Separator />
-        <div
-          class="conversation-section bg-gradient-to-br from-primary/5 to-transparent rounded-lg p-4 animate-fade-in-up"
-        >
-          <div class="flex items-center justify-between mb-4">
-            <h4 class="text-sm font-semibold text-primary">Conversation</h4>
-            <div class="flex items-center gap-2">
-              <Badge variant="secondary" class="text-xs">
+        <div class="flex-1 overflow-hidden">
+          <div class="p-4 border-b border-gray-200 dark:border-gray-600 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20">
+            <div class="flex items-center justify-between">
+              <h4 class="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <Sparkles class="w-4 h-4 text-blue-500" />
+                Conversation
+              </h4>
+              <Badge color="blue" class="text-xs">
                 {messages.length + (loading ? 1 : 0)} messages
               </Badge>
-              
             </div>
           </div>
 
           <div
-            class="thread-container max-h-64 overflow-y-auto space-y-4 pr-2 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-gray-300 hover:scrollbar-thumb-gray-400"
+            class="max-h-64 overflow-y-auto p-4 space-y-4"
             bind:this={responseDiv}
           >
             {#each messages as message}
-              <div
-                class="message-item flex gap-3 animate-fade-in-up {message.role === 'user'
-                  ? 'flex-row-reverse'
-                  : ''}"
-              >
-                <div class="message-content-wrapper flex-1 min-w-0">
-                  <div
-                    class="flex items-center gap-2 mb-2 {message.role === 'user'
-                      ? 'justify-end'
-                      : 'justify-start'}"
-                  >
-                    <span
-                      class="text-xs font-medium {message.role === 'user'
-                        ? 'text-primary'
-                        : 'text-accent-foreground'}"
-                    >
+              <div class="flex gap-3 {message.role === 'user' ? 'flex-row-reverse' : ''}">
+                <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 {message.role === 'user' ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300'}">
+                  {message.role === 'user' ? '👤' : '🤖'}
+                </div>
+                
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 mb-1 {message.role === 'user' ? 'justify-end' : 'justify-start'}">
+                    <span class="text-xs font-medium text-gray-500 dark:text-gray-400">
                       {message.role === 'user' ? 'You' : 'AI Assistant'}
                     </span>
-                    <Badge variant="outline" class="text-xs h-5">
+                    <span class="text-xs text-gray-400 dark:text-gray-500">
                       {new Date(message.timestamp).toLocaleTimeString([], {
                         hour: '2-digit',
                         minute: '2-digit',
                       })}
-                    </Badge>
+                    </span>
                   </div>
 
-                  <div
-                    class="message-bubble rounded-2xl px-4 py-3 max-w-full break-words transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg {message.role ===
-                    'user'
-                      ? 'user-message bg-gradient-to-r from-primary to-primary/90 text-primary-foreground rounded-br-md'
-                      : 'ai-message bg-muted border border-border rounded-bl-md'}"
-                  >
-                    <div class="message-text text-sm leading-relaxed">
+                  <div class="rounded-2xl px-4 py-3 max-w-full {message.role === 'user'
+                    ? 'bg-blue-500 text-white rounded-br-md'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-bl-md'}">
+                    <div class="text-sm leading-relaxed">
                       <SvelteMarkdown source={message.content} />
                     </div>
                   </div>
@@ -494,45 +434,36 @@
             {/each}
 
             {#if loading}
-              <div class="message-item flex gap-3 animate-fade-in-up">
-
-                <div class="message-content-wrapper flex-1 min-w-0">
-                  <div class="flex items-center gap-2 mb-2">
-                    <span class="text-xs font-medium text-accent-foreground">AI Assistant</span>
+              <div class="flex gap-3">
+                <div class="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center flex-shrink-0">
+                  🤖
+                </div>
+                
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 mb-1">
+                    <span class="text-xs font-medium text-gray-500 dark:text-gray-400">AI Assistant</span>
                     <div class="flex items-center gap-1">
-                      <div
-                        class="animate-spin h-3 w-3 border-2 border-accent border-t-transparent rounded-full"
-                      ></div>
-                      <Badge variant="secondary" class="text-xs h-5">
-                        {response ? 'Streaming...' : 'Thinking...'}
-                      </Badge>
+                      <div class="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                      <span class="text-xs text-gray-400">
+                        {response ? 'Typing...' : 'Thinking...'}
+                      </span>
                     </div>
                   </div>
 
                   {#if response}
-                    <div
-                      class="message-bubble rounded-2xl px-4 py-3 max-w-full break-words transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg ai-message bg-muted border border-border rounded-bl-md"
-                    >
-                      <div class="message-text text-sm leading-relaxed">
+                    <div class="bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-2xl rounded-bl-md px-4 py-3">
+                      <div class="text-sm leading-relaxed">
                         {@html marked.parse(response)}
                       </div>
                     </div>
                   {:else}
-                    <div
-                      class="message-bubble rounded-2xl px-4 py-3 max-w-full break-words ai-message bg-gradient-to-r from-muted to-muted/80 border border-dashed border-border rounded-bl-md min-h-12 flex items-center"
-                    >
-                      <div class="flex items-center gap-2 text-muted-foreground">
-                        <div class="flex space-x-1">
-                          <div class="w-2 h-2 bg-current rounded-full animate-bounce"></div>
-                          <div
-                            class="w-2 h-2 bg-current rounded-full animate-bounce [animation-delay:0.1s]"
-                          ></div>
-                          <div
-                            class="w-2 h-2 bg-current rounded-full animate-bounce [animation-delay:0.2s]"
-                          ></div>
-                        </div>
-                        <span class="text-xs">AI is typing...</span>
+                    <div class="bg-gray-100 dark:bg-gray-700 rounded-2xl rounded-bl-md px-4 py-3 flex items-center gap-2">
+                      <div class="flex space-x-1">
+                        <div class="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
+                        <div class="w-2 h-2 bg-blue-500 rounded-full animate-bounce [animation-delay:0.1s]"></div>
+                        <div class="w-2 h-2 bg-blue-500 rounded-full animate-bounce [animation-delay:0.2s]"></div>
                       </div>
+                      <span class="text-xs text-gray-500 dark:text-gray-400">AI is thinking...</span>
                     </div>
                   {/if}
                 </div>
@@ -542,83 +473,60 @@
         </div>
       {/if}
 
-      <CardContent class="space-y-4">
-        <!-- Selected Text Display -->
-        <!-- <div
-          class="selected-text-section bg-gradient-to-br from-muted/30 to-muted/10 border border-border rounded-lg p-4 animate-fade-in-up"
-        >
-          <h4 class="text-sm font-semibold text-primary mb-2">Selected Text:</h4>
-          <div
-            class="bg-background border border-border rounded-md p-3 text-sm max-h-20 overflow-y-auto font-mono leading-relaxed scrollbar-thin scrollbar-track-transparent scrollbar-thumb-gray-300"
-          >
-            "{$selectedText}"
-          </div>
-        </div> -->
-
-        <!-- <Separator /> -->
-
-        <!-- Custom Prompt Input -->
-        <div
-          class="custom-prompt bg-gradient-to-br from-accent/10 to-transparent rounded-lg p-4 animate-fade-in-up"
-        >
+      <!-- Input Area -->
+      <div class="p-4 border-t border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800">
+        <div class="bg-gray-50 dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600">
           <Tiptap
             bind:this={tiptapEditor}
-            placeholder="Ask anything"
+            placeholder="Ask anything about the selected text..."
             disabled={loading}
-            minHeight="32px"
+            minHeight="40px"
             on:send={handleTiptapSend}
           />
         </div>
+      </div>
 
-        <!-- Thread History Panel -->
-        {#if $showThreadHistory}
-          <Separator />
-          <div
-            class="thread-history-section bg-gradient-to-br from-primary/5 to-transparent rounded-lg p-4 animate-fade-in-up"
-          >
-            <h4 class="text-sm font-semibold text-primary mb-3">Recent Conversations:</h4>
-            <div
-              class="thread-list max-h-40 overflow-y-auto space-y-2 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-gray-300"
-            >
+      <!-- Thread History Panel -->
+      {#if $showThreadHistory}
+        <div class="border-t border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50">
+          <div class="p-4">
+            <h4 class="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+              <History class="w-4 h-4 text-blue-500" />
+              Recent Conversations
+            </h4>
+            
+            <div class="max-h-40 overflow-y-auto space-y-2">
               {#if $isLoadingThread}
                 <div class="flex items-center justify-center py-4">
-                  <div
-                    class="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full"
-                  ></div>
-                  <span class="ml-2 text-xs text-muted-foreground">Loading...</span>
+                  <Spinner class="w-4 h-4 mr-2" />
+                  <span class="text-xs text-gray-500 dark:text-gray-400">Loading...</span>
                 </div>
               {:else}
                 {#each $threadList as threadSummary}
                   <!-- svelte-ignore a11y_click_events_have_key_events -->
+                  <!-- svelte-ignore a11y_no_static_element_interactions -->
                   <div
-                    class="thread-item p-2 rounded-md border cursor-pointer transition-all duration-200 hover:bg-muted/50 hover:-translate-y-0.5 hover:shadow-md {$currentThread?.id ===
-                    threadSummary.id
-                      ? 'bg-primary/10 border-primary'
-                      : 'hover:bg-muted/50'}"
+                    class="w-full p-3 rounded-lg border text-left transition-all duration-200 hover:shadow-md cursor-pointer {$currentThread?.id === threadSummary.id
+                      ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
+                      : 'bg-white dark:bg-gray-600 border-gray-200 dark:border-gray-500 hover:bg-gray-50 dark:hover:bg-gray-500'}"
                     on:click={() => loadThread(threadSummary.id)}
-                    role="button"
-                    tabindex="0"
                   >
                     <div class="flex items-start justify-between">
                       <div class="flex-1 min-w-0">
-                        <div class="text-xs font-medium truncate">{threadSummary.title}</div>
-                        <div class="text-xs text-muted-foreground truncate mt-1">
+                        <div class="text-sm font-medium truncate text-gray-900 dark:text-white">
+                          {threadSummary.title}
+                        </div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400 truncate mt-1">
                           {threadSummary.domain}
                         </div>
-                        <div class="text-xs text-muted-foreground mt-1">
-                          {threadSummary.messageCount} messages • {new Date(
-                            threadSummary.updatedAt
-                          ).toLocaleDateString()}
+                        <div class="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                          {threadSummary.messageCount} messages • {new Date(threadSummary.updatedAt).toLocaleDateString()}
                         </div>
                       </div>
                       <button
-                        class="text-xs transition-transform hover:scale-110 {threadSummary.favorite
-                          ? 'text-yellow-500'
-                          : 'text-gray-400'}"
+                        class="text-sm transition-transform hover:scale-110 {threadSummary.favorite ? 'text-yellow-500' : 'text-gray-400'}"
                         on:click|stopPropagation={() => toggleThreadFavorite(threadSummary.id)}
-                        title={threadSummary.favorite
-                          ? 'Remove from favorites'
-                          : 'Add to favorites'}
+                        title={threadSummary.favorite ? 'Remove from favorites' : 'Add to favorites'}
                       >
                         ★
                       </button>
@@ -627,15 +535,15 @@
                 {/each}
 
                 {#if $threadList.length === 0}
-                  <div class="text-xs text-muted-foreground text-center py-4">
-                    No previous conversations
+                  <div class="text-xs text-gray-500 dark:text-gray-400 text-center py-4">
+                    No conversations yet. Start by asking a question!
                   </div>
                 {/if}
               {/if}
             </div>
           </div>
-        {/if}
-      </CardContent>
-    </Card>
+        </div>
+      {/if}
+    </div>
   </div>
 {/if}
