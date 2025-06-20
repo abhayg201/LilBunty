@@ -9,6 +9,7 @@ import {
   createScrollAwarePersistentVirtualElement,
   createFixedVirtualElement,
 } from '../lib/utils/floating-position';
+import ChatInput from '../components/ChatInput.svelte';
 
 // https://developer.chrome.com/docs/extensions/mv3/content_scripts/
 
@@ -104,6 +105,7 @@ function showBuntyOverlay(x: number, y: number) {
   // Wait for the next tick to ensure the Svelte component is rendered
   setTimeout(() => {
     listenForChatOverlayMounted();
+    setupDragListeners();
   }, 10);
 
   // Mount new instance
@@ -115,9 +117,7 @@ function listenForChatOverlayMounted() {
   const badgeOverlay = shadowRoot.querySelector('.widget-opener');
   if (!badgeOverlay) return;
   console.log('badgeOverlay', badgeOverlay);
-  badgeOverlay.addEventListener('chat-overlay-mounted', () => {
-    setupDragListeners();
-  });
+  badgeOverlay.addEventListener('chat-overlay-mounted', () => {});
 }
 
 // Drag state
@@ -137,16 +137,12 @@ function setupDragListeners() {
     const { offset, initialPos } = (e as CustomEvent).detail;
     isDragging = true;
     dragOffset = offset;
-    
+
     document.addEventListener('mousemove', handleDragMove as EventListener);
     document.addEventListener('mouseup', handleDragEnd as EventListener);
     document.body.classList.add('dragging-cursor');
 
     console.log('Drag started', { offset, initialPos });
-  });
-  // Listen for drag end events from the component
-  document.addEventListener('drag-end', () => {
-    handleDragEnd();
   });
 }
 
@@ -163,7 +159,7 @@ function handleDragMove(event: Event) {
   // Update shadow host position
   shadowHost.style.top = `${newPos.y}px`;
   shadowHost.style.left = `${newPos.x}px`;
-  
+
   // Store the manual position
   manualPosition = newPos;
   isDraggedPosition = true;
@@ -188,7 +184,7 @@ function handleDragEnd() {
   document.removeEventListener('mousemove', handleDragMove as EventListener);
   document.removeEventListener('mouseup', handleDragEnd as EventListener);
   document.body.classList.remove('dragging-cursor');
-
+  document.dispatchEvent(new CustomEvent('drag-end'));
   console.log('Drag ended');
 
   // After drag, keep element fixed relative to viewport on scroll by attaching floating position to fixed virtual element
@@ -198,7 +194,12 @@ function handleDragEnd() {
       (shadowHost as any).__floatingCleanup();
     }
     const fixedVE = createFixedVirtualElement(manualPosition);
-    const cleanup = setupFloatingPosition(fixedVE, shadowHost, { placement: 'right-start', offsetValue: 10, yAdjustment: 0, fallbackPlacements: [] });
+    const cleanup = setupFloatingPosition(fixedVE, shadowHost, {
+      placement: 'right-start',
+      offsetValue: 10,
+      yAdjustment: 0,
+      fallbackPlacements: [],
+    });
     (shadowHost as any).__floatingCleanup = cleanup;
   }
 }
@@ -243,18 +244,17 @@ function debounce(func: Function, wait: number) {
 }
 
 // Listen for chatContainerVisible store changes
-chatContainerVisible.subscribe((visible) => {
-    console.log('visible', visible);
-    if (shadowHost) {
-        if (visible) {
-            shadowHost.style.display = 'block';
-        } else {
-            // Don't hide shadowHost here if badge is still showing
-            // Only hide when fully closing the overlay
-        }
+chatContainerVisible.subscribe(visible => {
+  console.log('visible', visible);
+  if (shadowHost) {
+    if (visible) {
+      shadowHost.style.display = 'block';
+    } else {
+      // Don't hide shadowHost here if badge is still showing
+      // Only hide when fully closing the overlay
     }
   }
-);
+});
 
 // Listen for text selection with debouncing
 const handleMouseUp = debounce((event: MouseEvent) => {
@@ -263,7 +263,7 @@ const handleMouseUp = debounce((event: MouseEvent) => {
     const selection = window.getSelection();
     const text = selection?.toString().trim() || '';
     if (text) {
-      chatContainerVisible.set(false);
+      // chatContainerVisible.set(false);
       selectedText.set(text);
 
       // Reset manual drag state for new selection
@@ -271,9 +271,7 @@ const handleMouseUp = debounce((event: MouseEvent) => {
       manualPosition = null;
 
       console.log(selection?.anchorNode);
-      showBuntyOverlay(event.clientX, event.clientY - 60);
-    } else {
-      hideAvatarOverlay();
+      // showBuntyOverlay(event.clientX, event.clientY - 60);
     }
   } catch (error) {
     console.error('Error handling text selection:', error);
@@ -282,11 +280,23 @@ const handleMouseUp = debounce((event: MouseEvent) => {
 
 document.addEventListener('mouseup', handleMouseUp);
 
-// Hide overlay when clicking elsewhere
-document.addEventListener('mousedown', event => {
-  if (shadowHost && !shadowHost.contains(event.target as Node)) {
-    hideAvatarOverlay();
-    chatContainerVisible.set(false);
+// // Hide overlay when clicking elsewhere
+// document.addEventListener('mousedown', event => {
+//   if (shadowHost && !shadowHost.contains(event.target as Node)) {
+//     hideAvatarOverlay();
+//     chatContainerVisible.set(false);
+//   }
+// });
+
+// Listen for keyboard shortcut Cmd/Ctrl+B
+document.addEventListener('keydown', (event: KeyboardEvent) => {
+  // Check for Cmd+B (Mac) or Ctrl+B (Windows/Linux)
+  if ((event.metaKey || event.ctrlKey) && (event.key === 'b' || event.key === 'B')) {
+    event.preventDefault(); // Prevent default browser behavior
+    showBuntyOverlay(document.body.clientWidth * 0.6, document.body.clientHeight * 0.2);
+    console.log('chatContainerVisible', chatContainerVisible);
+    chatContainerVisible.update(visible => !visible);
+    console.log('Keyboard shortcut triggered: Chat container visible');
   }
 });
 

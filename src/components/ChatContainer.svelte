@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Button, Spinner } from 'flowbite-svelte';
+  import { Spinner } from 'flowbite-svelte';
   import { Plus, History } from 'lucide-svelte';
   import {
     chatContainerVisible,
@@ -29,6 +29,7 @@
 
   let dragging = false;
   let tiptapEditor: Tiptap | undefined;
+  let chatColour = 'black';
 
   let currentThreadData: Thread | null = null;
   let messages: Message[] = [];
@@ -37,6 +38,11 @@
   $: if ($currentThread) {
     currentThreadData = $currentThread;
     messages = currentThreadData?.messages || [];
+  }
+  $: if (dragging) {
+    chatColour = '#444';
+  } else {
+    chatColour = 'black';
   }
 
   onMount(async () => {
@@ -53,6 +59,9 @@
       chatOverlay.addEventListener('position-update', e => {
         const { x, y } = (e as CustomEvent<{ x: number; y: number }>).detail;
         overlayPosition.set({ x, y });
+      });
+      document.addEventListener('drag-end', e => {
+        dragging = false;
       });
     }
 
@@ -101,7 +110,6 @@
       isLoadingThread.set(false);
     }
   }
-  
 
   async function loadThreadHistory() {
     try {
@@ -141,13 +149,13 @@
       if (threadResponse.success) {
         // Set the new thread as current
         currentThread.set(threadResponse.data);
-        
+
         // Clear any current response and editor
         response = '';
         if (tiptapEditor) {
           tiptapEditor.clear();
         }
-        
+
         // Refresh thread list to show the new thread
         await loadThreadHistory();
       }
@@ -189,7 +197,6 @@
         x: mouseEvent.clientX - hostRect.left,
         y: mouseEvent.clientY - hostRect.top,
       };
-      console.log('onDragStart onupdate', mouseEvent.clientX, mouseEvent.clientY, hostRect.left, hostRect.top);
     }
 
     // Dispatch start event to content script
@@ -304,12 +311,16 @@
 </script>
 
 {#if $chatContainerVisible}
-  <div class="chat-overlay rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 text-white 
-  {dragging ? 'dragging' : ''}" bind:this={chatOverlay}>
-    <ChatHeader {dragging} on:dragstart={onDragStart} on:close={handleClose} />
-    <div class="chat-card w-[500px] max-w-[90vw] max-h-[80vh] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-      
-
+  <div
+    style="background: {chatColour} !important;"
+    class="chat-overlay rounded-xl text-white
+  {dragging ? 'dragging' : ''}"
+    bind:this={chatOverlay}
+  >
+    <ChatHeader on:dragstart={onDragStart} on:close={handleClose} />
+    <div
+      class="chat-card w-[500px] max-w-[90vw] max-h-[80vh] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden"
+    >
       <!-- Controls -->
       <div class="p-4 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600">
         <div class="flex items-center gap-2">
@@ -325,7 +336,7 @@
             {/if}
             New Chat
           </button>
-          
+
           <button
             on:click={() => showThreadHistory.set(!$showThreadHistory)}
             class="flex items-center gap-2 px-3 py-1.5 bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-200 text-xs rounded-md transition-colors duration-200"
@@ -344,12 +355,12 @@
 
       <!-- Thread History Panel -->
       {#if $showThreadHistory}
-        <ThreadHistory 
-          threadList={$threadList} 
-          isLoadingThread={$isLoadingThread} 
+        <ThreadHistory
+          threadList={$threadList}
+          isLoadingThread={$isLoadingThread}
           currentThreadId={$currentThread?.id || null}
-          on:select={(e) => loadThread(e.detail)}
-          on:favorite={(e) => toggleThreadFavorite(e.detail)}
+          on:select={e => loadThread(e.detail)}
+          on:favorite={e => toggleThreadFavorite(e.detail)}
         />
       {/if}
     </div>

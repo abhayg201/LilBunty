@@ -1,19 +1,16 @@
 <script lang="ts">
-  import { Badge } from '$lib/components/ui/badge'
-  import { chatContainerVisible, selectedText } from '../lib/stores'
-  import ChatContainer from './ChatContainer.svelte'
+  import { Badge } from '$lib/components/ui/badge';
+  import { chatContainerVisible, selectedText } from '../lib/stores';
+  import ChatContainer from './ChatContainer.svelte';
 
-  export let visible = false
-  let badgeOverlay: HTMLElement | null = null
+  export let visible = false;
+  let badgeOverlay: HTMLElement | null = null;
 
   async function handleClick() {
-    if (!badgeOverlay) return 
-    console.log('Badge clicked, selectedText:', $selectedText)
-    chatContainerVisible.set(true)
-    const eventMounted = new CustomEvent('chat-overlay-mounted')
-    badgeOverlay.dispatchEvent(eventMounted)
+    if (!badgeOverlay) return;
+    console.log('Badge clicked, selectedText:', $selectedText);
+    chatContainerVisible.set(true);
   }
-
 </script>
 
 {#if visible && !$chatContainerVisible && $selectedText}
@@ -24,7 +21,7 @@
       variant="default"
       class="cursor-pointer hover:scale-105 transition-transform px-3 py-2 text-sm font-medium"
     >
-      ✨ 
+      ✨
     </Badge>
   </div>
 {/if}
