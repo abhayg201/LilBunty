@@ -3,20 +3,18 @@
 	import { Editor } from '@tiptap/core';
 	import StarterKit from '@tiptap/starter-kit';
 	import Placeholder from '@tiptap/extension-placeholder';
-	import { selectedText } from '../stores';
-	import * as DropdownMenu from "$lib/components/ui/dropdown-menu/index.js";
 	import ContextMentions from './ContextMentions.svelte';
-
-	export let content = '';
-	export let placeholder = 'Ask anything';
-	export let disabled = false;
-	export let minHeight = '80px';
+	import DOMPurify from 'isomorphic-dompurify';
+	
+	export let content: string = '';
+	export let placeholder: string = 'Ask anything';
+	export let disabled: boolean = false;
+	export let minHeight: string = '80px';
 
 	let element: HTMLDivElement;
 	let editor: Editor | null = null;
 	let selectedModel = 'gpt-4';
 	let modelSearchQuery = '';
-	let isModelDropdownOpen = false;
 	let isContextMentionsOpen = false;
 	
 	// Dynamic context items
@@ -129,11 +127,13 @@
 		return editor ? editor.getText() : '';
 	}
 
-	export function setContent(newContent: string): void {
-		if (editor) {
-			editor.commands.setContent(newContent);
-		}
-	}
+
+export function setContent(newContent: string): void {
+  if (editor) {
+    const sanitized = DOMPurify.sanitize(newContent);
+    editor.commands.setContent(sanitized);
+  }
+}
 
 	export function clear(): void {
 		if (editor) {
@@ -155,7 +155,7 @@
 	}
 	
 	function handleKeydown(event: KeyboardEvent) {
-		if (event.key === 'Enter' && !(event.metaKey || event.ctrlKey)) {
+		if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
 			event.preventDefault();
 			handleSend();
 		}
@@ -166,11 +166,11 @@
 		editor.setEditable(!disabled);
 	}
 
-	function selectModel(modelValue: string) {
-		selectedModel = modelValue;
-		isModelDropdownOpen = false;
-		modelSearchQuery = '';
-	}
+	// function selectModel(modelValue: string) {
+	// 	selectedModel = modelValue;
+	// 	isModelDropdownOpen = false;
+	// 	modelSearchQuery = '';
+	// }
 
 	function handleModelSearch(event: Event) {
 		const target = event.target as HTMLInputElement;

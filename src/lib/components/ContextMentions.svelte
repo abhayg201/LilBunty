@@ -109,7 +109,7 @@
 		containerElement.style.position = 'fixed';
 		containerElement.style.top = `${position.top}px`;
 		containerElement.style.left = `${position.left}px`;
-		containerElement.style.zIndex = '214748364712';
+		containerElement.style.zIndex = '9999';
 	}
 
 	onMount(() => {
