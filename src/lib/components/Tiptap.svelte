@@ -21,7 +21,7 @@
 	let contextItems: Array<{id: string, label: string, content: string}> = [];
 	
 	// Context mentions positioning
-	let contextMentionsPosition: { top: number; left: number } | null = null;
+	let contextMentionsPosition: { top: number; left: number} | null = null;
 
 
 
@@ -58,12 +58,19 @@
 	}
 
 	function triggerContextMentions() {
+		
 		if (element && !disabled && !isContextMentionsOpen) {
 			const rect = element.getBoundingClientRect();
+			console.log(rect);
 			contextMentionsPosition = {
-				top: rect.bottom + 8,
-				left: rect.left
+				top: rect.top ,
+				left: rect.left ,
 			};
+			
+		}
+		if(isContextMentionsOpen){
+			isContextMentionsOpen = false;
+		}else{
 			isContextMentionsOpen = true;
 		}
 	}
@@ -192,8 +199,7 @@ export function setContent(newContent: string): void {
 			</button>
 			
 			{#each contextItems as item (item.id)}
-				<div class="editor-context-item context-item-dynamic">
-					<span class="context-label">{item.label}</span>
+				<div class="editor-context-item add-context-btn">
 					<!-- svelte-ignore a11y_consider_explicit_label -->
 					<button 
 						class="context-remove-btn" 
@@ -204,6 +210,7 @@ export function setContent(newContent: string): void {
 							<path d="M18 6L6 18M6 6l12 12"/>
 						</svg>
 					</button>
+					<span class="context-label">{item.label}</span>
 				</div>
 			{/each}
 		</div>

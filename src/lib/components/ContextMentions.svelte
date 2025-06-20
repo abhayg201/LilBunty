@@ -1,9 +1,8 @@
 <script lang="ts">
 	import { createEventDispatcher, onDestroy, onMount } from 'svelte';
 	import { get } from 'svelte/store';
-	import { selectedText } from '../stores';
+	import { selectedText, overlayPosition } from '../stores';
 	import { Card, Button } from "flowbite-svelte";
-
 	export let isOpen = false;
 	export let position: { top: number; left: number } | null = null;
 	export let query = '';
@@ -107,9 +106,11 @@
 	// Position the dropdown
 	$: if (containerElement && position && isOpen) {
 		containerElement.style.position = 'fixed';
-		containerElement.style.top = `${position.top}px`;
-		containerElement.style.left = `${position.left}px`;
-		containerElement.style.zIndex = '9999';
+		containerElement.style.top = `${$overlayPosition.y + position}px`;
+		containerElement.style.left = `${$overlayPosition.x + position}px`;
+		containerElement.style.zIndex = '99999';
+		containerElement.style.border = '1.5px solid gray';
+		// containerElement.style.borderRadius = '12px';
 	}
 
 	onMount(() => {
@@ -128,11 +129,13 @@
 {#if isOpen}
 	<div 
 		bind:this={containerElement}
-		class="context-mentions-dropdown"
+		class="context-mentions-dropdown rounded-lg"
+		style = "rounded-lg"
 		role="listbox"
 		aria-label="Context suggestions"
 	>
-		<Card class="w-80 shadow-lg border-2">
+		<Card class="w-80 shadow-lg "
+		>
 			<div class="p-4 pb-2">
 				<h3 class="text-sm font-medium text-gray-700 dark:text-gray-200">Add Context</h3>
 				<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -143,9 +146,12 @@
 				{#if filteredCommands.length > 0}
 					<div class="max-h-60 overflow-y-auto">
 						{#each filteredCommands as command, index}
-							<button
-								class="w-full justify-start p-3 h-auto rounded-none border-0 text-left hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 {index === selectedIndex ? 'bg-blue-50 dark:bg-blue-900/20' : ''}"
-								on:click={() => selectCommand(index)}
+							<Button
+								class="w-full justify-start p-3 h-auto rounded-xl border-0 text-left
+								hover:bg-gray-100 dark:hover:bg-gray-700 
+								transition-colors duration-200 
+								{index === selectedIndex ? 'bg-blue-50 dark:bg-blue-900/20' : ''}"
+								onclick={() => selectCommand(index)}
 							>
 								<div class="flex items-center gap-3 w-full">
 									<span class="text-lg flex-shrink-0">{command.icon}</span>
@@ -157,7 +163,7 @@
 										<span class="text-xs text-gray-500 dark:text-gray-400 bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded">Enter</span>
 									{/if}
 								</div>
-							</button>
+							</Button>
 						{/each}
 					</div>
 				{:else}

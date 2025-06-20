@@ -17,7 +17,11 @@
     border-color: #e2e8f0 !important;
     color: #1e293b !important;
 }
-
+.context-item-dynamic:hover {
+    background: white !important;
+    border-color: #e2e8f0 !important;
+    color: #1e293b !important;
+}
 .context-label {
     font-weight: 500 !important;
 }
@@ -32,8 +36,9 @@
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    margin-left: 2px;
-    margin-top: 3.25px;
+    margin-left: -2px;
+    margin-right: 1px;
+    margin-top: 2.25px;
 }
 
 .context-remove-btn:hover {
