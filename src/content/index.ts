@@ -1,8 +1,14 @@
 import { mount, unmount } from 'svelte';
-import Overlay from '../components/Overlay.svelte';
+import TextSelectOverlay from '../components/TextSelectOverlay.svelte';
+import ContextAddButton from '../components/ContextAddButton.svelte';
 import shadowStylesText from './shadow-styles.css?inline';
 import appStylesText from '../app.css?inline';
-import { selectedText, chatContainerVisible, overlayPosition } from '../lib/stores';
+import {
+  selectedText,
+  chatContainerVisible,
+  overlayPosition,
+  contextAddOverlayVisible,
+} from '../lib/stores';
 import {
   setupFloatingPosition,
   createPersistentVirtualElement,
@@ -10,6 +16,7 @@ import {
   createFixedVirtualElement,
 } from '../lib/utils/floating-position';
 import ChatInput from '../components/ChatInput.svelte';
+import ChatContainer from '../components/ChatContainer.svelte';
 
 // https://developer.chrome.com/docs/extensions/mv3/content_scripts/
 
@@ -18,6 +25,12 @@ let overlayInstance: any = null;
 let shadowHost: HTMLElement;
 let shadowRoot: ShadowRoot | null = null;
 let overlayContainer: HTMLElement;
+
+// Context add overlay variables
+let contextAddOverlayInstance: any = null;
+let contextAddShadowHost: HTMLElement;
+let contextAddShadowRoot: ShadowRoot | null = null;
+let contextAddOverlayContainer: HTMLElement;
 
 function createOverlayContainer() {
   if (shadowHost && shadowRoot && overlayContainer) {
@@ -58,6 +71,135 @@ function createOverlayContainer() {
   return overlayContainer;
 }
 
+function createContextAddOverlayContainer() {
+  if (contextAddShadowHost && contextAddShadowRoot && contextAddOverlayContainer) {
+    return contextAddOverlayContainer;
+  }
+
+  // Create shadow host for context add overlay
+  contextAddShadowHost = document.createElement('div');
+  contextAddShadowHost.id = 'context-add-overlay-host';
+  contextAddShadowHost.style.position = 'fixed';
+  contextAddShadowHost.style.zIndex = '2147483648'; // Higher than main overlay
+  contextAddShadowHost.style.pointerEvents = 'auto';
+  contextAddShadowHost.style.display = 'none';
+
+  // Attach shadow DOM
+  contextAddShadowRoot = contextAddShadowHost.attachShadow({ mode: 'open' });
+
+  // Add main app styles (includes Tailwind and CSS variables) to shadow DOM
+  const appStyle = document.createElement('style');
+  appStyle.textContent = appStylesText;
+  contextAddShadowRoot.appendChild(appStyle);
+
+  // Add custom shadow styles to shadow DOM
+  const shadowStyle = document.createElement('style');
+  shadowStyle.textContent = shadowStylesText;
+  contextAddShadowRoot.appendChild(shadowStyle);
+
+  // Create container inside shadow DOM
+  contextAddOverlayContainer = document.createElement('div');
+  contextAddOverlayContainer.id = 'context-add-overlay';
+  contextAddOverlayContainer.style.position = 'relative';
+  contextAddOverlayContainer.style.zIndex = '1';
+  contextAddOverlayContainer.style.pointerEvents = 'auto';
+
+  contextAddShadowRoot.appendChild(contextAddOverlayContainer);
+  document.body.appendChild(contextAddShadowHost);
+
+  return contextAddOverlayContainer;
+}
+
+function showContextAddOverlay() {
+  const container = createContextAddOverlayContainer();
+
+  // Destroy existing instance if it exists
+  if (contextAddOverlayInstance) {
+    unmount(contextAddOverlayInstance);
+    contextAddOverlayInstance = null;
+  }
+
+  // Show the contextAddShadowHost
+  contextAddShadowHost.style.display = 'block';
+
+  // Create virtual element based on actual selection bounds
+  const virtualElement = createScrollAwarePersistentVirtualElement({ x: 0, y: 0 }, false);
+
+  // Set up static position that doesn't change during scroll
+  const cleanup = setupFloatingPosition(
+    virtualElement,
+    contextAddShadowHost,
+    {
+      placement: 'top-start',
+      offsetValue: 8,
+      yAdjustment: -10,
+      fallbackPlacements: ['bottom-start', 'top-end', 'bottom-end'],
+      padding: 8,
+    },
+    (posX: any, posY: any) => {
+      console.log('ContextAddOverlay positioned at:', { x: posX, y: posY });
+    }
+  );
+
+  // Store cleanup function for later use
+  (contextAddShadowHost as any).__floatingCleanup = cleanup;
+
+  // Mount new instance with event handlers
+  contextAddOverlayInstance = mount(TextSelectOverlay, {
+    target: container,
+    props: { visible: true },
+  });
+
+  // Listen for add-context event
+  container.addEventListener('add-context', event => {
+    const { text } = (event as CustomEvent).detail;
+    handleAddContext(text);
+  });
+
+  // Listen for close event
+  container.addEventListener('close', () => {
+    hideContextAddOverlay();
+  });
+}
+
+function hideContextAddOverlay() {
+  if (contextAddShadowHost) {
+    contextAddShadowHost.style.display = 'none';
+
+    // Cleanup autoUpdate if it exists
+    if ((contextAddShadowHost as any).__floatingCleanup) {
+      (contextAddShadowHost as any).__floatingCleanup();
+      (contextAddShadowHost as any).__floatingCleanup = null;
+    }
+  }
+
+  if (contextAddOverlayInstance) {
+    unmount(contextAddOverlayInstance);
+    contextAddOverlayInstance = null;
+  }
+}
+
+function handleAddContext(text: string) {
+  // Show the main chat overlay if it's not visible
+  if (!overlayInstance) {
+    showBuntyOverlay(document.body.clientWidth * 0.6, document.body.clientHeight * 0.1);
+  }
+
+  // Dispatch event to add context to the chat container
+  document.dispatchEvent(
+    new CustomEvent('add-context-item', {
+      detail: { text, label: 'Selected Text' },
+    })
+  );
+
+  // Hide the context add overlay
+  hideContextAddOverlay();
+  contextAddOverlayVisible.set(false);
+
+  // Show the chat container
+  chatContainerVisible.set(true);
+}
+
 function showBuntyOverlay(x: number, y: number) {
   const container = createOverlayContainer();
 
@@ -78,7 +220,7 @@ function showBuntyOverlay(x: number, y: number) {
     console.log('Reusing manual dragged position:', manualPosition);
   } else {
     // Create virtual element based on actual selection bounds
-    const virtualElement = createScrollAwarePersistentVirtualElement({ x, y });
+    const virtualElement = createScrollAwarePersistentVirtualElement({ x, y }, true);
 
     // Set up static position that doesn't change during scroll
     const cleanup = setupFloatingPosition(
@@ -109,7 +251,7 @@ function showBuntyOverlay(x: number, y: number) {
   }, 10);
 
   // Mount new instance
-  overlayInstance = mount(Overlay, { target: container, props: { visible: true } });
+  overlayInstance = mount(ChatContainer, { target: container, props: {} });
 }
 
 function listenForChatOverlayMounted() {
@@ -177,7 +319,8 @@ function handleDragMove(event: Event) {
 }
 
 function handleDragEnd() {
-  if (!isDragging) return;
+  console.log('handleDragEnd');
+  if (!isDragging || !shadowHost) return;
 
   isDragging = false;
 
@@ -204,7 +347,7 @@ function handleDragEnd() {
   }
 }
 
-function hideAvatarOverlay() {
+function hideBuntyOverlay() {
   if (shadowHost) {
     shadowHost.style.display = 'none';
 
@@ -256,22 +399,41 @@ chatContainerVisible.subscribe(visible => {
   }
 });
 
+// Listen for contextAddOverlayVisible store changes
+contextAddOverlayVisible.subscribe(visible => {
+  console.log('contextAddOverlayVisible', visible);
+  if (contextAddShadowHost) {
+    if (visible) {
+      contextAddShadowHost.style.display = 'block';
+    } else {
+      contextAddShadowHost.style.display = 'none';
+    }
+  }
+});
+
 // Listen for text selection with debouncing
 const handleMouseUp = debounce((event: MouseEvent) => {
+  console.log('handleMouseUp', event);
+
+  // Don't handle selections inside existing overlays
   if (shadowHost && shadowHost.contains(event.target as Node)) return;
+  if (contextAddShadowHost && contextAddShadowHost.contains(event.target as Node)) return;
+
   try {
     const selection = window.getSelection();
     const text = selection?.toString().trim() || '';
     if (text) {
-      // chatContainerVisible.set(false);
       selectedText.set(text);
 
-      // Reset manual drag state for new selection
-      isDraggedPosition = false;
-      manualPosition = null;
+      // Show context add overlay for new text selection
+      showContextAddOverlay();
+      contextAddOverlayVisible.set(true);
 
-      console.log(selection?.anchorNode);
-      // showBuntyOverlay(event.clientX, event.clientY - 60);
+      console.log('Text selected:', text);
+    } else {
+      // Hide context add overlay if no text is selected
+      hideContextAddOverlay();
+      contextAddOverlayVisible.set(false);
     }
   } catch (error) {
     console.error('Error handling text selection:', error);
@@ -280,23 +442,42 @@ const handleMouseUp = debounce((event: MouseEvent) => {
 
 document.addEventListener('mouseup', handleMouseUp);
 
-// // Hide overlay when clicking elsewhere
-// document.addEventListener('mousedown', event => {
-//   if (shadowHost && !shadowHost.contains(event.target as Node)) {
-//     hideAvatarOverlay();
-//     chatContainerVisible.set(false);
-//   }
-// });
+// Hide context add overlay when clicking elsewhere
+document.addEventListener('mousedown', event => {
+  if (contextAddShadowHost && !contextAddShadowHost.contains(event.target as Node)) {
+    hideContextAddOverlay();
+    contextAddOverlayVisible.set(false);
+  }
+});
 
 // Listen for keyboard shortcut Cmd/Ctrl+B
 document.addEventListener('keydown', (event: KeyboardEvent) => {
   // Check for Cmd+B (Mac) or Ctrl+B (Windows/Linux)
   if ((event.metaKey || event.ctrlKey) && (event.key === 'b' || event.key === 'B')) {
     event.preventDefault(); // Prevent default browser behavior
-    showBuntyOverlay(document.body.clientWidth * 0.6, document.body.clientHeight * 0.2);
+
+    // Hide context add overlay if it's open
+    if (contextAddOverlayInstance) {
+      hideContextAddOverlay();
+      contextAddOverlayVisible.set(false);
+    }
+
+    if (overlayInstance) {
+      hideBuntyOverlay();
+    } else {
+      showBuntyOverlay(document.body.clientWidth * 0.6, document.body.clientHeight * 0.1);
+    }
     console.log('chatContainerVisible', chatContainerVisible);
     chatContainerVisible.update(visible => !visible);
     console.log('Keyboard shortcut triggered: Chat container visible');
+  } else if (event.key === 'Escape') {
+    if (contextAddOverlayInstance) {
+      hideContextAddOverlay();
+      contextAddOverlayVisible.set(false);
+    }
+    if (overlayInstance) {
+      hideBuntyOverlay();
+    }
   }
 });
 
@@ -308,5 +489,13 @@ window.addEventListener('beforeunload', () => {
   }
   if (overlayContainer) {
     overlayContainer.remove();
+  }
+
+  if (contextAddOverlayInstance) {
+    unmount(contextAddOverlayInstance);
+    contextAddOverlayInstance = null;
+  }
+  if (contextAddOverlayContainer) {
+    contextAddOverlayContainer.remove();
   }
 });

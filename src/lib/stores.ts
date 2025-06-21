@@ -3,6 +3,7 @@ import type { Thread, ThreadSummary } from '../models/thread';
 
 export const selectedText = writable('');
 export const chatContainerVisible = writable(false);
+export const contextAddOverlayVisible = writable(false);
 
 // Thread management stores
 export const currentThread = writable<Thread | null>(null);
@@ -12,5 +13,5 @@ export const threadError = writable<string | null>(null);
 
 // Thread UI state
 export const showThreadHistory = writable(false);
-export const threadSearchQuery = writable(''); 
-export const overlayPosition = writable({ x: 100, y: 100 }); 
+export const threadSearchQuery = writable('');
+export const overlayPosition = writable({ x: 100, y: 100 });

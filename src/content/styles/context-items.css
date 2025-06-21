@@ -1,50 +1,50 @@
 /* Enhanced context items styles */
 .add-context-btn {
-    background: white !important;
-    color: #1e293b !important;
-    border-color: #e2e8f0 !important;
-    transition: all 0.15s ease !important;
+  background: white !important;
+  color: #1e293b !important;
+  border-color: #e2e8f0 !important;
+  transition: all 0.15s ease !important;
 }
 
 .add-context-btn:hover {
-    background: #f8fafc !important;
-    border-color: #cbd5e1 !important;
-    transform: translateY(-1px) !important;
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  transform: translateY(-1px) !important;
 }
 
 .context-item-dynamic {
-    background: white !important;
-    border-color: #e2e8f0 !important;
-    color: #1e293b !important;
+  background: white !important;
+  border-color: #e2e8f0 !important;
+  color: #1e293b !important;
 }
 .context-item-dynamic:hover {
-    background: white !important;
-    border-color: #e2e8f0 !important;
-    color: #1e293b !important;
+  background: white !important;
+  border-color: #e2e8f0 !important;
+  color: #1e293b !important;
 }
 
 .context-content {
-    color: #1e293b !important;
+  color: #1e293b !important;
     background: black !important;
 }
 
 .context-remove-btn {
-    background: none !important;
-    border: none !important;
-    cursor: pointer !important;
-    color: #ef4444 !important;
-    border-radius: 4px !important;
-    transition: all 0.15s ease !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    margin-left: -2px;
-    margin-right: 1px;
-    margin-top: 2.25px;
+  background: none !important;
+  border: none !important;
+  cursor: pointer !important;
+  color: #ef4444 !important;
+  border-radius: 4px !important;
+  transition: all 0.15s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin-left: -2px;
+  margin-right: 1px;
+  margin-top: 2.25px;
 }
 
 .context-remove-btn:hover {
-    background: #fee2e2 !important;
+  background: #fee2e2 !important;
 }
 
 /* Context mentions dropdown styles */
@@ -303,4 +303,56 @@
 
 .dark .context-mentions-dropdown .no-results-subtext {
     color: #6b7280 !important; /* dark:text-gray-500 */
-} 
+}
+
+/* Context Add Overlay Styles */
+.context-add-overlay {
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  background: white !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 8px !important;
+  padding: 4px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  font-family: system-ui, -apple-system, sans-serif !important;
+  z-index: 9999 !important;
+}
+
+.context-add-btn {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  background: #3b82f6 !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 6px !important;
+  padding: 8px 12px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+
+.context-add-btn:hover {
+  background: #2563eb !important;
+  transform: translateY(-1px) !important;
+}
+
+.context-close-btn {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: none !important;
+  border: none !important;
+  border-radius: 4px !important;
+  padding: 6px !important;
+  color: #64748b !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+
+.context-close-btn:hover {
+  background: #f1f5f9 !important;
+  color: #475569 !important;
+}
