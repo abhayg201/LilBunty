@@ -31,6 +31,8 @@
 	let searchInput: HTMLInputElement;
 	let availableTabs: chrome.tabs.Tab[] = [];
 	let currentView: 'commands' | 'tabs' = 'commands';
+	let tabsContainer: HTMLDivElement | undefined;
+	let commandsContainer: HTMLDivElement | undefined;
 
 	// @ Commands configuration
 	const commands = [
@@ -264,10 +266,12 @@
 				case 'ArrowUp':
 					event.preventDefault();
 					selectedIndex = selectedIndex > 0 ? selectedIndex - 1 : filteredCommands.length - 1;
+					setTimeout(() => scrollSelectedIntoView(), 10);
 					break;
 				case 'ArrowDown':
 					event.preventDefault();
 					selectedIndex = selectedIndex < filteredCommands.length - 1 ? selectedIndex + 1 : 0;
+					setTimeout(() => scrollSelectedIntoView(), 10);
 					break;
 				case 'Enter':
 					event.preventDefault();
@@ -288,10 +292,12 @@
 				case 'ArrowUp':
 					event.preventDefault();
 					selectedIndex = selectedIndex > 0 ? selectedIndex - 1 : availableTabs.length - 1;
+					setTimeout(() => scrollSelectedIntoView(), 10);
 					break;
 				case 'ArrowDown':
 					event.preventDefault();
 					selectedIndex = selectedIndex < availableTabs.length - 1 ? selectedIndex + 1 : 0;
+					setTimeout(() => scrollSelectedIntoView(), 10);
 					break;
 				case 'Enter':
 					event.preventDefault();
@@ -319,6 +325,21 @@
 	// Reset selected index when search query changes
 	$: if (searchQuery !== undefined) {
 		selectedIndex = 0;
+	}
+
+	// Function to scroll selected item into view
+	function scrollSelectedIntoView() {
+		const container = currentView === 'tabs' ? tabsContainer : commandsContainer;
+		if (!container) return;
+		
+		const selectedItem = container.querySelector('.tab-item.selected, .command-item.selected') as HTMLElement;
+		if (selectedItem) {
+			selectedItem.scrollIntoView({
+				block: 'nearest',
+				inline: 'nearest',
+				behavior: 'smooth'
+			});
+		}
 	}
 
 
@@ -467,7 +488,7 @@ export function setContent(newContent: string): void {
 					</div>
 					
 					<!-- Commands List -->
-					<div class="max-h-48 overflow-y-auto">
+					<div class="max-h-48 overflow-y-auto" bind:this={commandsContainer}>
 						{#if filteredCommands.length > 0}
 							{#each filteredCommands as command, index}
 								<!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -541,7 +562,7 @@ export function setContent(newContent: string): void {
 					
 					
 					<!-- Tabs List -->
-					<div class="max-h-60 overflow-y-auto">
+					<div class="max-h-60 overflow-y-auto" bind:this={tabsContainer}>
 						{#if availableTabs.length > 0}
 							{#each availableTabs as tab, index}
 								<!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -554,7 +575,6 @@ export function setContent(newContent: string): void {
 									tabindex="0"
 									onkeydown={(e) => {
 										if (e.key === 'Enter' || e.key === ' ') {
-											e.preventDefault();
 											selectTab(tab);
 										}
 									}}

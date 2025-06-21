@@ -362,7 +362,7 @@
       <!-- Input Area -->
       <ChatInput 
       bind:tiptapEditor 
-      disabled={loading} 
+      disabled={generating} 
       chatOverlay={chatOverlay} 
       on:send={handleTiptapSend} />
 
