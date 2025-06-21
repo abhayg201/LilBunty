@@ -21,7 +21,7 @@
   import ThreadHistory from './ThreadHistory.svelte';
 
   let response = '';
-  let loading = false;
+  let generating = false;
   let port: chrome.runtime.Port;
   let shadowRoot: ShadowRoot | null = null;
   let chatOverlay: HTMLDivElement | null = null;
@@ -65,13 +65,22 @@
       });
     }
 
+    // Listen for add-context-item events from the context add overlay
+    document.addEventListener('add-context-item', (e) => {
+      console.log('add-context-item event', e);
+      const { text, label } = (e as CustomEvent).detail;
+      if (tiptapEditor && tiptapEditor.addContextItem) {
+        tiptapEditor.addContextItem(label, text);
+        console.log('Context item added to editor:', { label, text });
+      }
+    });
+
     // Initialize thread management
     await initializeThread();
     await loadThreadHistory();
   });
 
   async function initializeThread() {
-    if (!$selectedText) return;
     console.log('New thread init');
     isLoadingThread.set(true);
     try {
@@ -216,7 +225,7 @@
     if (tiptapEditor) {
       tiptapEditor.clear();
     }
-    loading = false;
+    generating = false;
     if (port) port.disconnect();
 
     // Clear thread state
@@ -249,7 +258,7 @@
       console.error('Error saving user message:', error);
     }
 
-    loading = true;
+    generating = true;
     response = '';
     // Remove previous listener and disconnect port if any
     if (port) {
@@ -273,7 +282,7 @@
     if (msg.type === 'STREAM_CHUNK') {
       response += msg.chunk;
     } else if (msg.type === 'STREAM_DONE') {
-      loading = false;
+      generating = false;
       console.log('STREAM_DONE', msg);
       port.disconnect();
 
@@ -300,7 +309,7 @@
       }
     } else if (msg.type === 'STREAM_ERROR') {
       response = 'Error: ' + msg.error;
-      loading = false;
+      generating = false;
       port.disconnect();
     }
   }
@@ -310,7 +319,7 @@
   });
 </script>
 
-{#if $chatContainerVisible}
+<!-- {#if $chatContainerVisible} -->
   <div
     style="background: {chatColour} !important;"
     class="chat-overlay rounded-xl text-white
@@ -348,10 +357,10 @@
       </div>
 
       <!-- Conversation History -->
-      <MessageList {messages} {loading} {response} />
+      <MessageList {messages} {generating} {response} />
 
       <!-- Input Area -->
-      <ChatInput bind:tiptapEditor disabled={loading} on:send={handleTiptapSend} />
+      <ChatInput bind:tiptapEditor disabled={generating} on:send={handleTiptapSend} />
 
       <!-- Thread History Panel -->
       {#if $showThreadHistory}
@@ -365,4 +374,4 @@
       {/if}
     </div>
   </div>
-{/if}
+<!-- {/if} -->

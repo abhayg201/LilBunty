@@ -9,7 +9,7 @@
   import { onMount } from 'svelte';
 
   export let messages: Message[] = [];
-  export let loading = false;
+  export let generating = false;
   export let response = '';
 
   let responseDiv: HTMLDivElement | null = null;
@@ -23,14 +23,14 @@
   });
 
   // Auto-scroll to bottom when response updates
-  $: if (response && responseDiv) {
+  $: if (response && responseDiv && generating) {
     setTimeout(() => {
       if (responseDiv) responseDiv.scrollTop = responseDiv.scrollHeight;
     }, 0);
   }
 </script>
 
-{#if messages.length > 0 || loading}
+{#if messages.length > 0 || generating}
   <div class="flex-1 overflow-hidden">
     <div class="p-4 border-b border-gray-200 dark:border-gray-600 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20">
       <div class="flex items-center justify-between">
@@ -39,7 +39,7 @@
           Conversation
         </h4>
         <Badge color="blue" class="text-xs">
-          {messages.length + (loading ? 1 : 0)} messages
+          {messages.length + (generating ? 1 : 0)} messages
         </Badge>
       </div>
     </div>
@@ -50,12 +50,8 @@
     >
       {#each messages as message}
         <div class="flex gap-3 {message.role === 'user' ? 'flex-row-reverse' : ''}">
-          <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 {message.role === 'user' ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300'}">
-            {message.role === 'user' ? '👤' : '🤖'}
-          </div>
-          
           <div class="flex-1 min-w-0">
-            <div class="flex items-center gap-2 mb-1 {message.role === 'user' ? 'justify-end' : 'justify-start'}">
+            <div class="flex items-center gap-2 mb-1 px-2 {message.role === 'user' ? 'justify-end' : 'justify-start'}">
               <span class="text-xs font-medium text-gray-500 dark:text-gray-400">
                 {message.role === 'user' ? 'You' : 'AI Assistant'}
               </span>
@@ -78,11 +74,8 @@
         </div>
       {/each}
 
-      {#if loading}
+      {#if generating}
         <div class="flex gap-3">
-          <div class="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center flex-shrink-0">
-            🤖
-          </div>
           
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 mb-1">
