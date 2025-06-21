@@ -46,8 +46,23 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   } else if (message.type === 'THREAD_OPERATION') {
     handleThreadOperation(message.payload, sendResponse);
     return true;
+  } else if (message.type === 'GET_TABS') {
+    handleGetTabs(message.payload, sendResponse);
+    return true;
   }
 });
+
+// Handle tab fetching
+async function handleGetTabs(payload: any, sendResponse: (response: any) => void) {
+  try {
+    const tabs = await chrome.tabs.query({ currentWindow: true });
+    console.log('Background fetched tabs:', tabs);
+    sendResponse({ success: true, data: tabs });
+  } catch (error) {
+    console.error('Error fetching tabs:', error);
+    sendResponse({ success: false, error: error instanceof Error ? error.message : String(error) });
+  }
+}
 
 // Handle thread operations
 async function handleThreadOperation(payload: any, sendResponse: (response: any) => void) {

@@ -24,7 +24,7 @@
   let loading = false;
   let port: chrome.runtime.Port;
   let shadowRoot: ShadowRoot | null = null;
-  let chatOverlay: HTMLDivElement | null = null;
+  let chatOverlay: HTMLDivElement ;
   let dragOffset = { x: 0, y: 0 };
 
   let dragging = false;
@@ -351,7 +351,11 @@
       <MessageList {messages} {loading} {response} />
 
       <!-- Input Area -->
-      <ChatInput bind:tiptapEditor disabled={loading} on:send={handleTiptapSend} />
+      <ChatInput 
+      bind:tiptapEditor 
+      disabled={loading} 
+      chatOverlay={chatOverlay} 
+      on:send={handleTiptapSend} />
 
       <!-- Thread History Panel -->
       {#if $showThreadHistory}

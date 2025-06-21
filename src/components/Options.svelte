@@ -38,7 +38,7 @@
     }
   </script>
   
-  <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+  <div class="min-h-screen bg-gray-50 dark:bg-gray-900 min-w-[700px]">
     <div class="flex">
       <!-- Enhanced Sidebar -->
       <div class="w-64 bg-white dark:bg-gray-800 shadow-lg border-r border-gray-200 dark:border-gray-700">

@@ -47,6 +47,6 @@ export default defineManifest(async () => ({
             "128": "src/assets/icons/icon-128.png",
         },
     },
-    host_permissions: ["https://api.openai.com/"],
-    permissions: ["storage", "sidePanel","scripting", "activeTab"] as chrome.runtime.ManifestPermissions[],
+    host_permissions: ["https://api.openai.com/","<all_urls>"],
+    permissions: ["storage", "sidePanel","scripting", "activeTab", "tabs"] as chrome.runtime.ManifestPermissions[],
 }));

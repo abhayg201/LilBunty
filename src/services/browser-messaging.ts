@@ -110,3 +110,15 @@ export class ThreadMessaging {
     });
   }
 }
+
+// Tab operation helpers
+export class TabMessaging {
+  private static messaging = BrowserMessaging.getInstance();
+
+  static async getTabs() {
+    return this.messaging.sendMessage({
+      type: 'GET_TABS',
+      payload: {},
+    });
+  }
+}

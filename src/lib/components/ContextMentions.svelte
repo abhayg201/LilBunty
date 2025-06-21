@@ -2,7 +2,7 @@
 	import { createEventDispatcher, onDestroy, onMount } from 'svelte';
 	import { get } from 'svelte/store';
 	import { selectedText, overlayPosition } from '../stores';
-	import { Card, Button } from "flowbite-svelte";
+	import { Card, Button, Dropdown, DropdownItem, DropdownDivider, DropdownHeader } from "flowbite-svelte";
 	export let isOpen = false;
 	export let position: { top: number; left: number } | null = null;
 	export let query = '';
@@ -106,11 +106,10 @@
 	// Position the dropdown
 	$: if (containerElement && position && isOpen) {
 		containerElement.style.position = 'fixed';
-		containerElement.style.top = `${$overlayPosition.y + position}px`;
-		containerElement.style.left = `${$overlayPosition.x + position}px`;
+		containerElement.style.top = `${ position.top+$overlayPosition.y}px`;
+		containerElement.style.left = `${ position.left+$overlayPosition.x}px`;
 		containerElement.style.zIndex = '99999';
 		containerElement.style.border = '1.5px solid gray';
-		// containerElement.style.borderRadius = '12px';
 	}
 
 	onMount(() => {
@@ -127,7 +126,8 @@
 </script>
 
 {#if isOpen}
-	<div 
+	<!-- Original Custom Dropdown -->
+	<!-- <div 
 		bind:this={containerElement}
 		class="context-mentions-dropdown rounded-lg"
 		style = "rounded-lg"
@@ -173,12 +173,39 @@
 				{/if}
 			</div>
 		</Card>
-	</div>
-{/if}
+	</div> -->
 
-<style>
-	.context-mentions-dropdown {
-		position: fixed;
-		z-index: 214748364712;
-	}
-</style> 
+	<!-- New Flowbite Dropdown -->
+	<Dropdown placement="top-start" class="w-80 shadow-lg">
+		<DropdownHeader>
+			<span class="text-sm font-medium text-gray-700 dark:text-gray-200">Add Context</span>
+			<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+				Choose content to add as context
+			</p>
+		</DropdownHeader>
+		<DropdownDivider />
+		
+		{#if filteredCommands.length > 0}
+			{#each filteredCommands as command, index}
+				<DropdownItem 
+					class="flex items-center gap-3 p-3 hover:bg-gray-100 dark:hover:bg-gray-700 
+					{index === selectedIndex ? 'bg-blue-50 dark:bg-blue-900/20' : ''}"
+					onclick={() => selectCommand(index)}
+				>
+					<span class="text-lg flex-shrink-0">{command.icon}</span>
+					<div class="flex-1 text-left">
+						<div class="font-medium text-sm text-gray-900 dark:text-gray-100">{command.label}</div>
+						<div class="text-xs text-gray-500 dark:text-gray-400">{command.description}</div>
+					</div>
+					{#if index === selectedIndex}
+						<span class="text-xs text-gray-500 dark:text-gray-400 bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded">Enter</span>
+					{/if}
+				</DropdownItem>
+			{/each}
+		{:else}
+			<DropdownItem disabled class="text-center text-sm text-gray-500 dark:text-gray-400">
+				No commands found
+			</DropdownItem>
+		{/if}
+	</Dropdown>
+{/if}

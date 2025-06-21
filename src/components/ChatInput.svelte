@@ -4,7 +4,7 @@
 
   export let disabled = false;
   export let tiptapEditor: Tiptap | undefined = undefined;
-
+  export let chatOverlay: HTMLDivElement ;
   const dispatch = createEventDispatcher();
 
   function handleTiptapSend(event: CustomEvent) {
@@ -18,6 +18,7 @@
       bind:this={tiptapEditor}
       placeholder="Ask anything about the selected text..."
       disabled={disabled}
+      chatOverlay={chatOverlay}
       minHeight="40px"
       on:send={handleTiptapSend}
     />
