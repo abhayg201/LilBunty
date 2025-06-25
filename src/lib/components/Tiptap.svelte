@@ -8,6 +8,8 @@
 	import { Dropdown, Popover  } from "flowbite-svelte";
 	import { get } from 'svelte/store';
 	import { TabMessaging } from '../../services/browser-messaging';
+	import TurndownService from 'turndown';
+
 	
 	export let content: string = '';
 	export let placeholder: string = 'Ask anything';
@@ -156,9 +158,53 @@
 		}
 	}
 
-	function selectTab(tab: chrome.tabs.Tab) {
+	async function selectTab(tab: chrome.tabs.Tab) {
 		const tabContent = `Tab: ${tab.title || 'Untitled'}\nURL: ${tab.url || 'No URL'}`;
 		addContextItem(`Tab: ${tab.title || 'Untitled'}`, tabContent);
+		
+		// Fetch, process with Readability, and convert to Markdown using background service worker
+		if (tab.url && tab.url.startsWith('http')) {
+			try {
+				console.log('Requesting background service worker to fetch HTML from:', tab.url);
+				
+				// Use the background service worker to fetch and clean the HTML
+				const response = await TabMessaging.fetchAndConvertUrl(tab.url, tab.title);
+				
+				if (response.success && response.data) {
+					const { title, url, html, length } = response.data;
+					
+					// Convert HTML to Markdown using Turndown in the content script
+					const turndownService = new TurndownService({
+						headingStyle: 'atx',
+						codeBlockStyle: 'fenced',
+						hr: '---',
+						bulletListMarker: '-'
+					});
+					
+					const markdown = turndownService.turndown(html);
+					
+					console.log('=== EXTRACTED MARKDOWN (Content Script) ===');
+					console.log('Title:', title);
+					console.log('URL:', url);
+					console.log('HTML length:', length);
+					console.log('Markdown length:', markdown.length);
+					console.log('--- MARKDOWN CONTENT ---');
+					console.log(markdown);
+					console.log('=== END MARKDOWN ===');
+					
+					// Add the markdown as context item
+					addContextItem(`Article: ${title}`, `# ${title}\n\n${markdown}`);
+				} else {
+					console.warn('Background service worker could not extract article content from:', tab.url);
+					console.warn('Error:', response.error);
+				}
+				
+			} catch (error) {
+				console.error('Error communicating with background service worker for URL:', tab.url, error);
+			}
+		} else {
+			console.warn('Cannot process URL:', tab.url, '(not a valid HTTP/HTTPS URL)');
+		}
 		
 		// Remove the @ character that triggered the dropdown
 		removeAtSymbol();

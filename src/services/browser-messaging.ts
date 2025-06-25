@@ -121,4 +121,22 @@ export class TabMessaging {
       payload: {},
     });
   }
+
+  static async fetchAndConvertUrl(url: string, title?: string) {
+    return this.messaging.sendMessage({
+      type: 'FETCH_AND_CONVERT_URL',
+      payload: {
+        url,
+        title,
+      },
+    });
+  }
+
+  // Extract content from the currently active tab using content script
+  static async extractCurrentPageContent() {
+    return this.messaging.sendMessage({
+      type: 'EXTRACT_CURRENT_PAGE_CONTENT',
+      payload: {},
+    });
+  }
 }

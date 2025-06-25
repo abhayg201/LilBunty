@@ -3,6 +3,7 @@ import { OpenAIService } from '../services/openai-service';
 import { ThreadService } from '../services/thread-service';
 import openai, { OpenAI } from 'openai';
 import type { ResponseStreamEvent } from 'openai/resources/responses/responses.mjs';
+// TurndownService moved back to content script where DOM APIs are available
 
 const SYSTEM_PROMPT =
   "You are a helpful assistant that works along a human while they are reading a webpage. You are given the context of the webpage and the user's selected text. You are to help the human understand the webpage and the selected text.";
@@ -49,6 +50,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   } else if (message.type === 'GET_TABS') {
     handleGetTabs(message.payload, sendResponse);
     return true;
+  } else if (message.type === 'FETCH_AND_CONVERT_URL') {
+    handleFetchAndConvertUrl(message.payload, sendResponse);
+    return true;
+  } else if (message.type === 'EXTRACT_CURRENT_PAGE_CONTENT') {
+    handleExtractCurrentPageContent(message.payload, sendResponse);
+    return true;
   }
 });
 
@@ -61,6 +68,278 @@ async function handleGetTabs(payload: any, sendResponse: (response: any) => void
   } catch (error) {
     console.error('Error fetching tabs:', error);
     sendResponse({ success: false, error: error instanceof Error ? error.message : String(error) });
+  }
+}
+
+// Handle URL fetching and conversion to markdown
+async function handleFetchAndConvertUrl(payload: { url: string, title?: string }, sendResponse: (response: any) => void) {
+  try {
+    const { url, title: pageTitle } = payload;
+    
+    if (!url || !url.startsWith('http')) {
+      sendResponse({ 
+        success: false, 
+        error: 'Invalid URL provided. URL must start with http or https.' 
+      });
+      return;
+    }
+
+    console.log('Background fetching HTML from:', url);
+    
+    // Step 1: Find or create a tab with the target URL
+    let targetTabId: number | null = null;
+    
+    // First, check if there's already a tab with this URL
+    const tabs = await chrome.tabs.query({});
+    const existingTab = tabs.find(tab => tab.url === url);
+    
+    if (existingTab && existingTab.id) {
+      targetTabId = existingTab.id;
+      console.log('Found existing tab with URL:', targetTabId);
+    } else {
+      // Create a new tab with the URL (in the background)
+      const newTab = await chrome.tabs.create({ 
+        url: url, 
+        active: false // Don't switch to the tab
+      });
+      targetTabId = newTab.id!;
+      console.log('Created new tab for URL:', targetTabId);
+      
+      // Wait for the tab to finish loading
+      await new Promise<void>((resolve) => {
+        const checkComplete = (tabId: number, changeInfo: chrome.tabs.TabChangeInfo) => {
+          if (tabId === targetTabId && changeInfo.status === 'complete') {
+            chrome.tabs.onUpdated.removeListener(checkComplete);
+            resolve();
+          }
+        };
+        chrome.tabs.onUpdated.addListener(checkComplete);
+      });
+    }
+
+    // Step 2: Inject content script to extract DOM content
+    console.log('Injecting content script into tab:', targetTabId);
+    
+    // Inject the content script that will extract the page content
+    const results = await chrome.scripting.executeScript({
+      target: { tabId: targetTabId },
+      func: extractPageContent,
+    });
+
+    if (!results || results.length === 0 || !results[0].result) {
+      throw new Error('Failed to extract content from page');
+    }
+
+    const extractedData = results[0].result;
+    console.log('=== EXTRACTED HTML (Content Script) ===');
+    console.log('Title:', extractedData.title);
+    console.log('URL:', extractedData.url);
+    console.log('HTML length:', extractedData.html.length);
+    console.log('=== END HTML ===');
+    
+    // Step 3: Close the tab if we created it (optional - you might want to keep it)
+    if (!existingTab && targetTabId) {
+      // Optional: Close the tab after a short delay to allow content extraction
+      setTimeout(() => {
+        chrome.tabs.remove(targetTabId!).catch(console.error);
+      }, 1000);
+    }
+
+    // Send the extracted HTML back
+    sendResponse({ 
+      success: true, 
+      data: {
+        title: extractedData.title,
+        url: extractedData.url,
+        html: extractedData.html,
+        length: extractedData.html.length
+      }
+    });
+    
+  } catch (error) {
+    console.error('Background error fetching or processing URL:', payload.url, error);
+    sendResponse({ 
+      success: false, 
+      error: error instanceof Error ? error.message : String(error) 
+    });
+  }
+}
+
+// Content script function that runs in the target page context
+function extractPageContent() {
+  try {
+    // Get the page title
+    const title = document.title || 'No Title';
+    const url = window.location.href;
+
+    // Extract main content using various strategies
+    let content = '';
+
+    // Strategy 1: Try to find main content containers
+    const contentSelectors = [
+      'main',
+      'article', 
+      '[role="main"]',
+      '.content',
+      '#content',
+      '.post',
+      '.entry-content',
+      '.article-content'
+    ];
+
+    let mainContent: Element | null = null;
+    for (const selector of contentSelectors) {
+      const element = document.querySelector(selector);
+      if (element && element.textContent && element.textContent.trim().length > 100) {
+        mainContent = element;
+        break;
+      }
+    }
+
+    // Strategy 2: If no main content found, use body but filter out common non-content elements
+    if (!mainContent) {
+      // Clone the body to avoid modifying the original page
+      const bodyClone = document.body.cloneNode(true) as Element;
+      
+      // Remove common non-content elements
+      const removeSelectors = [
+        'header', 'nav', 'footer', 'aside',
+        '.header', '.navigation', '.nav', '.footer', '.sidebar', '.aside',
+        '.advertisement', '.ads', '.ad', '.promo',
+        'script', 'style', 'noscript',
+        '.cookie-banner', '.cookie-notice',
+        '.social-share', '.share-buttons'
+      ];
+
+      removeSelectors.forEach(selector => {
+        const elements = bodyClone.querySelectorAll(selector);
+        elements.forEach(el => el.remove());
+      });
+
+      mainContent = bodyClone;
+    }
+
+    if (mainContent) {
+      // Get the HTML content
+      content = mainContent.innerHTML;
+      
+      // Clean up the HTML
+      content = content
+        // Remove script and style content that might have been missed
+        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+        .replace(/<noscript[^>]*>[\s\S]*?<\/noscript>/gi, '')
+        // Remove HTML comments
+        .replace(/<!--[\s\S]*?-->/g, '')
+        // Clean up excessive whitespace
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    // Fallback: if still no content, get visible text
+    if (!content || content.length < 50) {
+      // Get all visible text content
+      const walker = document.createTreeWalker(
+        document.body,
+        NodeFilter.SHOW_TEXT,
+        {
+          acceptNode: function(node) {
+            const parent = node.parentElement;
+            if (!parent) return NodeFilter.FILTER_REJECT;
+            
+            // Skip hidden elements
+            const style = window.getComputedStyle(parent);
+            if (style.display === 'none' || style.visibility === 'hidden') {
+              return NodeFilter.FILTER_REJECT;
+            }
+            
+            // Skip script/style content
+            if (parent.tagName === 'SCRIPT' || parent.tagName === 'STYLE' || parent.tagName === 'NOSCRIPT') {
+              return NodeFilter.FILTER_REJECT;
+            }
+            
+            return NodeFilter.FILTER_ACCEPT;
+          }
+        }
+      );
+
+      const textNodes: string[] = [];
+      let node;
+      while (node = walker.nextNode()) {
+        const text = node.textContent?.trim();
+        if (text && text.length > 3) {
+          textNodes.push(text);
+        }
+      }
+      
+      content = textNodes.join(' ');
+    }
+
+    return {
+      title,
+      url,
+      html: content,
+      length: content.length
+    };
+
+  } catch (error) {
+    console.error('Error extracting page content:', error);
+    return {
+      title: document.title || 'Error',
+      url: window.location.href,
+      html: `Error extracting content: ${error}`,
+      length: 0
+    };
+  }
+}
+
+// Handle extracting content from the currently active tab
+async function handleExtractCurrentPageContent(payload: any, sendResponse: (response: any) => void) {
+  try {
+    console.log('Background extracting content from current page');
+    
+    // Get the currently active tab
+    const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    
+    if (!activeTab || !activeTab.id) {
+      throw new Error('No active tab found');
+    }
+
+    console.log('Injecting content script into current tab:', activeTab.id);
+    
+    // Reuse the same approach as handleFetchAndConvertUrl but for the current tab
+    const results = await chrome.scripting.executeScript({
+      target: { tabId: activeTab.id },
+      func: extractPageContent,
+    });
+
+    if (!results || results.length === 0 || !results[0].result) {
+      throw new Error('Failed to extract content from current page');
+    }
+
+    const extractedData = results[0].result;
+    console.log('=== EXTRACTED HTML (Current Page) ===');
+    console.log('Title:', extractedData.title);
+    console.log('URL:', extractedData.url);
+    console.log('HTML length:', extractedData.html.length);
+    console.log('=== END HTML ===');
+    
+    sendResponse({ 
+      success: true, 
+      data: {
+        title: extractedData.title,
+        url: extractedData.url,
+        html: extractedData.html,
+        length: extractedData.html.length
+      }
+    });
+    
+  } catch (error) {
+    console.error('Background error extracting current page content:', error);
+    sendResponse({ 
+      success: false, 
+      error: error instanceof Error ? error.message : String(error) 
+    });
   }
 }
 
