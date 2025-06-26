@@ -305,6 +305,7 @@
 	}
 
 	function handleKeyDown(event: KeyboardEvent) {
+		event.stopPropagation();
 		if (!isOpen) return;
 
 		if (currentView === 'commands') {
@@ -425,7 +426,7 @@
 
 		// Add keyboard event listener
 		if (typeof window !== 'undefined') {
-			window.addEventListener('keydown', handleKeyDown);
+			window.addEventListener('keydown', handleKeyDown, true);
 		}
 	});
 
@@ -478,6 +479,7 @@ export function setContent(newContent: string): void {
 	}
 	
 	function handleKeydown(event: KeyboardEvent) {
+		event.stopPropagation();
 		if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
 			event.preventDefault();
 			handleSend();
